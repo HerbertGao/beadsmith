@@ -1,0 +1,43 @@
+Beadsmith
+Copyright 2026 The Beadsmith Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party material whose attribution notices are
+reproduced below, as required by their respective licenses.
+
+-------------------------------------------------------------------------------
+
+palettes/artkal_s.json
+
+The color data in palettes/artkal_s.json (Artkal 5mm Midi "S" series) is
+derived from the "beadcolors" project by maxcleme, which is distributed under
+the MIT License. The RGB values were converted from the upstream CSV
+raw/artkal_s.csv into the "#RRGGBB" hex form used by this project; no values
+were otherwise modified.
+
+  Upstream source : https://github.com/maxcleme/beadcolors
+  File            : raw/artkal_s.csv
+  Commit          : 29229889daab404fb30531d4bb785fd73f7f58e3
+
+  MIT License
+
+  Copyright (c) 2020 maxcleme
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
