@@ -3,8 +3,12 @@
 
 use thiserror::Error;
 
+pub mod image;
+pub mod models;
 pub mod palette;
 
+pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
+pub use models::PixelGrid;
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
 
 /// Engine error type. Every public API returns `Result<T, BeadError>`.
@@ -24,6 +28,18 @@ pub enum BeadError {
     /// names the single offending object.
     #[error("invalid palette: {reason}")]
     InvalidPalette { reason: String },
+
+    /// Image bytes failed to decode (corrupt, truncated, or a format that
+    /// was not compiled in). Wraps the underlying `image` crate error.
+    #[error("failed to decode image")]
+    ImageDecode(#[from] ::image::ImageError),
+
+    /// Image decoded but a requested operation is semantically invalid
+    /// (zero target dimension, zero-dimension source, or a crop that floors
+    /// to a zero dimension). `reason` is deterministic and names the
+    /// offending dimension.
+    #[error("invalid image: {reason}")]
+    InvalidImage { reason: String },
 }
 
 #[cfg(test)]

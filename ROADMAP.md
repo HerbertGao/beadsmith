@@ -51,13 +51,14 @@ palette; loading the bundled Artkal palette succeeds.
 **Goal:** turn an image into a bead grid (1 pixel = 1 bead), no color matching
 yet.
 
-- `image` module: `decode_image`, `crop_center`, `resize_image` (PNG/JPG/JPEG/
-  WEBP in).
-- `models`: `BeadCell`, `BeadPattern` (cells carry raw resized colors for now).
+- `image` module: `decode_image`, `crop_center`, `resize_image`, `image_to_grid`
+  (PNG/JPG/JPEG/WEBP in).
+- `models`: `PixelGrid` (raw row-major RGB grid; `BeadCell`/`BeadPattern` come
+  in M3 once there is a palette to index into).
 - Center-crop to target aspect ratio, then resize to `width × height`.
 
 **Done when:** decoding + center-crop + resize to e.g. 80×100 produces a
-`BeadPattern` with exactly `width × height` cells; a golden-ish fixture
+`PixelGrid` with exactly `width × height` cells; a golden-ish fixture
 confirms deterministic output.
 
 ---
@@ -68,6 +69,8 @@ confirms deterministic output.
 
 - `matcher` module: `ColorMatcher` trait + `find_best_match`.
 - Phase 1 implementation: RGB Euclidean distance against the loaded palette.
+- Introduce `BeadCell`/`BeadPattern` and map M2's `PixelGrid` into a
+  `BeadPattern` (each cell's raw RGB resolved to a palette index).
 - `BeadCell.color_index` now points into the palette.
 
 **Done when:** known colors map to their exact palette entry; an off-palette
