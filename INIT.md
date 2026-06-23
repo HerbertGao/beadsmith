@@ -198,17 +198,11 @@ pub struct ColorStat {
     pub count: u32,
 }
 
-pub struct BeadCell {
-    pub x: u32,
-    pub y: u32,
-    pub color_index: u16,
-}
-
 pub struct BeadPattern {
     pub width: u32,
     pub height: u32,
-    pub cells: Vec<BeadCell>,
-    pub stats: Vec<ColorStat>,
+    pub cells: Vec<u16>,         // row-major palette indices; cells[y*width+x]
+    pub stats: Vec<ColorStat>,  // filled from M4; M3's BeadPattern has no stats field
 }
 ```
 

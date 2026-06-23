@@ -53,8 +53,8 @@ yet.
 
 - `image` module: `decode_image`, `crop_center`, `resize_image`, `image_to_grid`
   (PNG/JPG/JPEG/WEBP in).
-- `models`: `PixelGrid` (raw row-major RGB grid; `BeadCell`/`BeadPattern` come
-  in M3 once there is a palette to index into).
+- `models`: `PixelGrid` (raw row-major RGB grid; `BeadPattern { cells: Vec<u16> }`
+  comes in M3 once there is a palette to index into).
 - Center-crop to target aspect ratio, then resize to `width × height`.
 
 **Done when:** decoding + center-crop + resize to e.g. 80×100 produces a
@@ -69,9 +69,10 @@ confirms deterministic output.
 
 - `matcher` module: `ColorMatcher` trait + `find_best_match`.
 - Phase 1 implementation: RGB Euclidean distance against the loaded palette.
-- Introduce `BeadCell`/`BeadPattern` and map M2's `PixelGrid` into a
-  `BeadPattern` (each cell's raw RGB resolved to a palette index).
-- `BeadCell.color_index` now points into the palette.
+- Introduce `BeadPattern { cells: Vec<u16> }` (row-major palette indices) and
+  map M2's `PixelGrid` into a `BeadPattern` (each cell's raw RGB resolved to a
+  palette index).
+- Each `cells[i]` (a `u16`) now points into the palette.
 
 **Done when:** known colors map to their exact palette entry; an off-palette
 color maps to the nearest one (asserted in a unit test). Deterministic.

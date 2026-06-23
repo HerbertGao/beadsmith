@@ -233,12 +233,6 @@ pub struct PixelGrid {
     pub pixels: Vec<[u8; 3]>,
 }
 
-pub struct BeadCell {
-    pub x: u32,
-    pub y: u32,
-    pub color_index: u16,
-}
-
 pub struct ColorStat {
     pub code: String,
     pub name: String,
@@ -248,10 +242,17 @@ pub struct ColorStat {
 pub struct BeadPattern {
     pub width: u32,
     pub height: u32,
-    pub cells: Vec<BeadCell>,
-    pub stats: Vec<ColorStat>,
+    pub cells: Vec<u16>,         // row-major palette indices; cells[y*width+x]
+    pub stats: Vec<ColorStat>,  // filled from M4; M3's BeadPattern has no stats field
 }
 ```
+
+`BeadPattern.cells` is row-major (`cells[y*width+x]` is the palette index of
+cell `(x, y)`), with no per-cell coordinates — `(x, y)` is recoverable from the
+position, matching `PixelGrid`'s row-major layout. There is no per-cell struct;
+cells are bare palette indices.
+`stats` is a forward-looking field: it is populated starting in **M4**, and the
+M3 `BeadPattern` ships without it (M3 produces only `cells`).
 
 `PixelGrid` is a transitional, raw-RGB intermediate produced by the `image`
 module in M2 (row-major, `pixels.len() == width × height`), before any palette
@@ -278,7 +279,11 @@ Exports
 
 Before color matching (M2), the raw `PixelGrid` is the source of truth. Once
 the matcher resolves cells to palette colors (M3 onward), `BeadPattern` becomes
-the source of truth, and preview, statistics, and exports all derive from it.
+the source of truth and `PixelGrid` is demoted to a pre-matching intermediate,
+no longer returned to external callers. Preview, statistics, and exports all
+derive from `BeadPattern`: M4 statistics count over `BeadPattern.cells`
+(palette indices), and M5 rendering looks each `cells[i]` up in the palette to
+color the cell — never reaching back into `PixelGrid`'s raw RGB.
 
 Never derive statistics from rendered images. Always derive from
 `BeadPattern`.

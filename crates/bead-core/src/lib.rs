@@ -4,14 +4,18 @@
 use thiserror::Error;
 
 pub mod image;
+pub mod matcher;
 pub mod models;
 pub mod palette;
 
 pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
-pub use models::PixelGrid;
+pub use matcher::{match_pattern, ColorMatcher, RgbMatcher};
+pub use models::{BeadPattern, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
 
-/// Engine error type. Every public API returns `Result<T, BeadError>`.
+/// The shared engine error type. Fallible public APIs return
+/// `Result<T, BeadError>`; total APIs (e.g. `match_pattern`,
+/// `ColorMatcher::find_best_match`) return their value directly.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum BeadError {
