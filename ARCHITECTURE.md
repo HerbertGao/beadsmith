@@ -103,6 +103,7 @@ Responsible for image decoding, resizing, and preprocessing.
 pub fn decode_image(...)
 pub fn resize_image(...)
 pub fn crop_center(...)
+pub fn image_to_grid(...)
 ```
 
 ---
@@ -226,6 +227,12 @@ pub struct PaletteColor {
     pub rgb: [u8; 3],
 }
 
+pub struct PixelGrid {
+    pub width: u32,
+    pub height: u32,
+    pub pixels: Vec<[u8; 3]>,
+}
+
 pub struct BeadCell {
     pub x: u32,
     pub y: u32,
@@ -246,6 +253,13 @@ pub struct BeadPattern {
 }
 ```
 
+`PixelGrid` is a transitional, raw-RGB intermediate produced by the `image`
+module in M2 (row-major, `pixels.len() == width × height`), before any palette
+exists. It is **not** the final result: in M3 the matcher consumes a
+`PixelGrid` and maps each cell's raw RGB into a `BeadPattern` (resolving the
+palette index). `BeadPattern` remains the stable, source-of-truth result for
+external callers.
+
 ---
 
 ## Rendering Strategy
@@ -261,6 +275,10 @@ Statistics
    ↓
 Exports
 ```
+
+Before color matching (M2), the raw `PixelGrid` is the source of truth. Once
+the matcher resolves cells to palette colors (M3 onward), `BeadPattern` becomes
+the source of truth, and preview, statistics, and exports all derive from it.
 
 Never derive statistics from rendered images. Always derive from
 `BeadPattern`.
