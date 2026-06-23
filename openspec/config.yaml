@@ -1,0 +1,41 @@
+schema: spec-driven
+
+context: |
+  项目：Beadsmith —— 本地优先的拼豆（pixel bead）图案生成器。把图片转成拼豆
+  图纸，预览成品并统计颜色/数量，全程离线、无后端。
+
+  技术栈：Rust（Cargo workspace）+ 未来 Flutter 壳。
+    - crates/bead-core：引擎，所有图像/调色板/图案逻辑（库，无 UI/无文件系统/
+      无平台假设）。依赖 image / serde / rayon / thiserror。
+    - crates/bead-cli：CLI 壳，不含算法，用 clap + anyhow。
+    - crates/bead-ffi：Flutter 桥（M8 才创建）。
+
+  硬规则（详见 ARCHITECTURE.md）：
+    - bead-core 不感知 UI/文件系统/Flutter/平台；数据进、数据出。
+    - 确定性：同输入必须同输出，无显式请求不引入随机性。
+    - BeadPattern 是唯一真相源；统计/预览/导出都从它派生，绝不从渲染图反推。
+    - pipeline::generate_pattern 是外部调用的唯一入口。
+    - CLI 是契约：前端与 bead-cli 不一致即前端 bug。
+
+  里程碑：见 ROADMAP.md（M0–M9）。当前处于 M0。
+  GitHub CLI 一律用 \gh（反斜杠前缀）。
+
+# 每个工件的规则（可选）
+# 为特定工件添加自定义规则。
+# 示例：
+#   rules:
+#     proposal:
+#       - 保持提案在500字以内
+#       - 始终包含"非目标"部分
+#     tasks:
+#       - 将任务分解为最多2小时的块
+
+# 每个工件的规则（可选）
+# 为特定工件添加自定义规则。
+# 示例：
+#   rules:
+#     proposal:
+#       - 保持提案在500字以内
+#       - 始终包含"非目标"部分
+#     tasks:
+#       - 将任务分解为最多2小时的块

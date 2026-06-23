@@ -1,0 +1,54 @@
+# CLAUDE.md
+
+Guidance for working in this repository.
+
+## What this is
+
+Beadsmith — a local-first pixel bead pattern generator. A reusable Rust engine
+(`bead-core`) turns images into bead-art patterns; thin frontends (CLI now,
+Flutter mobile later) wrap it. Everything runs on-device; no backend.
+
+Read `INIT.md` (product), `ARCHITECTURE.md` (internals), and `ROADMAP.md`
+(milestones M0–M9) before non-trivial work. We are currently at **M0**.
+
+## Layout
+
+```text
+crates/bead-core/   engine: all image/palette/pattern logic (library)
+crates/bead-cli/    CLI wrapper over bead-core (no algorithms)
+crates/bead-ffi/    Flutter bridge — created at M8, not before
+```
+
+Other dirs (`palettes/`, `samples/`, `tests/golden/`, `apps/mobile/`) are
+created when a milestone first needs them, not up front.
+
+## Hard rules (from ARCHITECTURE.md)
+
+1. **`bead-core` knows nothing about UI, filesystem, Flutter, or platforms.**
+   Data in (bytes, options, palette), data out (pattern, stats, images).
+2. **Deterministic.** Same input ⇒ identical output. No randomness unless
+   explicitly requested. This is a gate, not a nicety — golden tests and the
+   "CLI == FFI" check depend on it.
+3. **`BeadPattern` is the source of truth.** Preview, statistics, and exports
+   all derive from it. Never derive statistics from rendered images.
+4. **`pipeline::generate_pattern` is the only entry point** for external
+   callers (CLI, FFI). Don't reach into internal modules from outside.
+5. **The CLI is the contract.** If a frontend disagrees with `bead-cli`, the
+   bug is in the frontend.
+
+## Build & test
+
+```bash
+cargo build
+cargo test          # unit + golden tests live in-crate / under tests/golden
+cargo run -p bead-cli -- --help
+```
+
+## Conventions
+
+- Errors: `thiserror` in core, expose `Result<T, BeadError>`. `anyhow` in the
+  CLI only.
+- Future algorithms slot in behind traits (`Quantizer`, `ColorMatcher`,
+  `Renderer`) without touching the pipeline.
+- Performance: single-threaded through Phase 1; `rayon` arrives in Phase 2.
+- Spec-driven changes go through OpenSpec (`openspec/`).
