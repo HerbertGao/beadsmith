@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # Rust crates (root Cargo workspace).
+  # Group patch+minor into one weekly PR; majors fall out into their own PRs
+  # so a breaking bump never blocks the safe ones.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used in workflows (keeps SHA pins fresh).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
