@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Engine error type. Every public API returns `Result<T, BeadError>`.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum BeadError {
     #[error("not yet implemented")]
     NotImplemented,

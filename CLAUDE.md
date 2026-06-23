@@ -22,7 +22,7 @@ crates/bead-ffi/    Flutter bridge — created at M8, not before
 Other dirs (`palettes/`, `samples/`, `tests/golden/`, `apps/mobile/`) are
 created when a milestone first needs them, not up front.
 
-## Hard rules (from ARCHITECTURE.md)
+## Hard rules (from ARCHITECTURE.md + ROADMAP.md)
 
 1. **`bead-core` knows nothing about UI, filesystem, Flutter, or platforms.**
    Data in (bytes, options, palette), data out (pattern, stats, images).

@@ -6,7 +6,8 @@ context: |
 
   技术栈：Rust（Cargo workspace）+ 未来 Flutter 壳。
     - crates/bead-core：引擎，所有图像/调色板/图案逻辑（库，无 UI/无文件系统/
-      无平台假设）。依赖 image / serde / rayon / thiserror。
+      无平台假设）。当前仅依赖 thiserror；image / serde 等按里程碑加入；rayon 是
+      后期性能优化（先单线程，后并行，见 ARCHITECTURE.md 性能策略）。
     - crates/bead-cli：CLI 壳，不含算法，用 clap + anyhow。
     - crates/bead-ffi：Flutter 桥（M8 才创建）。
 
@@ -18,24 +19,40 @@ context: |
     - CLI 是契约：前端与 bead-cli 不一致即前端 bug。
 
   里程碑：见 ROADMAP.md（M0–M9）。当前处于 M0。
+  术语「Phase」分两层勿混：①算法 Phase 1–4 = 配色档位（最近色/降色/CIELAB+ΔE/
+  抖动，见 INIT.md「Pattern Generation」）；②项目 Phase 1–3 = 平台阶段（CLI /
+  Flutter 移动 / 桌面+Web，见 INIT.md「Target Platforms」；ROADMAP.md 仅覆盖
+  Phase 1–2 = M0–M7 / M8–M9）。
   GitHub CLI 一律用 \gh（反斜杠前缀）。
 
-# 每个工件的规则（可选）
-# 为特定工件添加自定义规则。
-# 示例：
-#   rules:
-#     proposal:
-#       - 保持提案在500字以内
-#       - 始终包含"非目标"部分
-#     tasks:
-#       - 将任务分解为最多2小时的块
-
-# 每个工件的规则（可选）
-# 为特定工件添加自定义规则。
-# 示例：
-#   rules:
-#     proposal:
-#       - 保持提案在500字以内
-#       - 始终包含"非目标"部分
-#     tasks:
-#       - 将任务分解为最多2小时的块
+# 每个工件的规则
+rules:
+  proposal:
+    - 用中文编写；提交信息用中文 + 约定式提交（feat/fix/docs/chore/refactor/test）
+    - 明确变更涉及的 bead-core 模块（image/palette/quantizer/matcher/renderer/
+      statistics/pipeline/models/errors）与所处里程碑（M0–M9）
+    - 必含「非目标」段（沿用 INIT.md Non Goals 风格），划清本次不做什么
+    - 新算法必须声明所属「算法 Phase」（1 最近色 / 2 降色 / 3 CIELAB+ΔE /
+      4 抖动，见 INIT.md「Pattern Generation」），不得跨档提前引入
+    - 涉及引擎输出（pattern/统计/渲染）的变更必须说明对「确定性」的影响：
+      同 image+palette+dimensions+options 是否仍产生逐字节相同输出
+    - 新增依赖必须列出并说明为何 stdlib / 已有依赖 / 平台原生能力不够
+  design:
+    - 遵循 ARCHITECTURE.md 五条硬规则；bead-core 不得引入 UI / 文件系统 /
+      剪贴板 / 平台（Flutter/iOS/Android）依赖
+    - 决策段每条含「替代方案」+「否决理由」
+    - 可替换算法一律走 trait（Quantizer / ColorMatcher / Renderer），新增实现
+      不改 pipeline::generate_pattern 主流程
+    - 默认禁随机；确需随机性必须显式声明并提供确定性路径（固定种子等）
+    - 统计 / 预览 / 导出只能从 BeadPattern 派生，绝不从渲染图反推
+    - 错误一律 thiserror + Result<T, BeadError>（core）；CLI 层才用 anyhow
+  tasks:
+    - 按 crate / 模块分层分组（bead-core 各模块 / bead-cli / bead-ffi），每个
+      任务标注受影响源文件路径
+    - 引擎能力必须有可独立运行的验证（cargo test 或 bead-cli），不依赖 UI
+    - 改变引擎输出的任务必须同步新增 / 更新 golden 测试（tests/golden/）
+    - 任务粒度限 ≤ 2 小时一块；非平凡逻辑至少留一个可运行的检查
+    - 涉及 bead-ffi / 移动端的任务必须包含「与 bead-cli 同输入产出一致」的对账步骤
+    - 跨平台改动需考虑各目标平台兼容性：项目 Phase 1 CLI 桌面三平台
+      （macOS/Linux/Windows，M0–M7）；项目 Phase 2 移动端（iOS+Android，M8–M9）
+    - 每个任务须对应覆盖该里程碑在 ROADMAP.md 的「Done when」验收点
