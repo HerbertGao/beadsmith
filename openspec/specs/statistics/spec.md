@@ -1,5 +1,8 @@
-## 新增需求
+# statistics 规范
 
+## 目的
+待定 - 由归档变更 add-statistics 创建。归档后请更新目的。
+## 需求
 ### 需求:从 BeadPattern 统计每色豆数
 `count_colors` 必须接受一个 `BeadPattern` 与一个 `&Palette`，遍历 `BeadPattern.cells`（调色板下标）逐格计数，
 产出 `Vec<ColorStat>`。计数**必须只来自 `cells` 下标**，禁止读取 `PixelGrid` 原始 RGB、禁止从渲染图反推、
@@ -86,9 +89,9 @@ matcher 禁止 panic 的契约延伸至此。空调色板（`colors.len()==0`）
 - **那么** 它的 `code`/`name` 等于 `palette.colors[该下标]` 的对应字段，`count`（`u32`）等于该下标在 `cells` 中的出现次数
 
 ### 需求:重复 RGB 的调色板色按下标分别计数
-当调色板含多个 RGB 相同但 `code` 不同的色时（`validate_palette` 只保证 `code` 唯一、不保证 RGB 唯一），
-`count_colors` **必须按下标分别计数、不合并**。由于匹配器把精确命中送往最低下标，较高下标的重复色可能 `count==0`
-而被省略（只列用到的色）。
+`count_colors` **必须**按调色板下标分别计数、**禁止**按 RGB 合并：当调色板含多个 RGB 相同但 `code` 不同的色时
+（`validate_palette` 只保证 `code` 唯一、不保证 RGB 唯一），每个下标各自独立计数。由于匹配器把精确命中送往最低
+下标，较高下标的重复色可能 `count==0` 而被省略（只列用到的色）。
 
 #### 场景:同 RGB 双色只有最低下标累计命中
 - **当** 调色板含两个 RGB 完全相同、`code` 不同的色（下标 i < j），且某 `BeadPattern` 的所有格都命中该 RGB
@@ -119,3 +122,4 @@ matcher 禁止 panic 的契约延伸至此。空调色板（`colors.len()==0`）
 #### 场景:跨架构位精确 golden
 - **当** 对一个固定小 `BeadPattern`（含重复命中与等 count 平局）+ 固定小调色板做统计
 - **那么** `Vec<ColorStat>` 等于硬编码期望、summary 等于硬编码期望字符串，且断言在 arm64 与 x86_64 上都通过
+
