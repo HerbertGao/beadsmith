@@ -42,7 +42,13 @@ jobs:
       fail-fast: false
       matrix:
         # Phase 1 target platforms (ROADMAP): macOS, Linux, Windows.
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-24.04-arm is the M7 golden *canonical* byte platform (arm64
+        # Linux); the others run the float-independent structural invariants.
+        # NOTE: the arm leg is the ONLY runner that byte-asserts the golden — if
+        # it ever stops scheduling (e.g. repo made private without arm runner
+        # access, or label deprecated) CI stays green with zero byte coverage, so
+        # make `test (ubuntu-24.04-arm)` a required status check in branch protection.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
