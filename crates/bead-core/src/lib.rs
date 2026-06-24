@@ -7,12 +7,14 @@ pub mod image;
 pub mod matcher;
 pub mod models;
 pub mod palette;
+pub mod renderer;
 pub mod statistics;
 
 pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
 pub use matcher::{match_pattern, ColorMatcher, RgbMatcher};
 pub use models::{BeadPattern, ColorStat, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
+pub use renderer::{render_grid, render_preview, BeadShape, RenderOptions};
 pub use statistics::{count_colors, generate_summary, total_beads};
 
 /// The shared engine error type. Fallible public APIs return
@@ -46,6 +48,14 @@ pub enum BeadError {
     /// offending dimension.
     #[error("invalid image: {reason}")]
     InvalidImage { reason: String },
+
+    /// PNG encoding failed. A dimension-guarded, valid in-memory buffer never
+    /// actually triggers this; it exists only so the renderer does not panic on
+    /// a reachable API (`ImageDecode` already owns `#[from] ::image::ImageError`,
+    /// so this variant uses a named field to wrap the error manually rather than
+    /// duplicating `#[from]`). See design D8.
+    #[error("failed to encode image")]
+    ImageEncode { source: ::image::ImageError },
 }
 
 #[cfg(test)]
