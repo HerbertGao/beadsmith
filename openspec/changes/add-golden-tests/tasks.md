@@ -37,7 +37,7 @@
   + `[[bench]] name = "bench" harness = false`。
 - [x] 3.2 新建 `crates/bead-core/benches/bench.rs`（D8）：`criterion_group!`/`criterion_main!`；一个 `benchmark_group("generate_pattern")`，五尺寸
   `[(40,40),(80,100),(100,100),(150,150),(300,300)]`（**目标**尺寸）各一个 `BenchmarkId`。每尺寸 **setup 时合成源图（须大于目标、每维 2×）**：`image::RgbImage::from_fn(2*w,2*h,|x,y| Rgb([(x%256)as u8,(y%256)as u8,((x+y)%256)as u8]))`（源=目标会命中 `imageops::resize` 拷贝短路、漏测 Lanczos 重采样）
-  → 编码 PNG 字节（同 M6 `demo_png`）；palette 经 `CARGO_MANIFEST_DIR/../..` 读 `palettes/artkal_s.json` 一次。`b.iter(|| generate_pattern(black_box(&png_bytes), black_box(&palette), black_box(&opts)))`
+  → 编码 PNG 字节（同 M6 `demo_png`）；palette 经 `include_bytes!` 编译期内嵌（bead-core 运行时不碰 fs，rule 1/D2）。`b.iter(|| generate_pattern(black_box(&png_bytes), black_box(&palette), black_box(&opts)))`
   （`opts = GenerateOptions{width:w,height:h,..Default::default()}`）。**不 committed 大图**。
   - `// ponytail: 测库入口 generate_pattern 端到端（M8/FFI 与 CLI 真调的东西）；per-stage 拆分留 Phase-2 优化基线、非必需`
 

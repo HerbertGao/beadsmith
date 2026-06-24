@@ -11,9 +11,7 @@
 //! ponytail: 测库入口 generate_pattern 端到端（M8/FFI 与 CLI 真调的东西）；
 //! per-stage 拆分留 Phase-2 优化基线、非必需。
 
-use std::fs;
 use std::hint::black_box;
-use std::path::Path;
 
 use bead_core::{generate_pattern, load_palette, GenerateOptions, Palette};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -35,12 +33,12 @@ fn demo_png(w: u32, h: u32) -> Vec<u8> {
     buf.into_inner()
 }
 
-/// Load `palettes/artkal_s.json` from the repo root once (via
-/// `CARGO_MANIFEST_DIR/../..`), as the golden tests and CLI do.
+/// Load `palettes/artkal_s.json`, embedded at compile time via `include_bytes!`
+/// so `bead-core` (incl. its bench harness) touches **no filesystem at runtime**
+/// (CLAUDE.md rule 1 / design D2: core is data-in/data-out, fs-free).
 fn load_artkal_s() -> Palette {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../palettes/artkal_s.json");
-    let bytes = fs::read(&path).expect("reading palettes/artkal_s.json must succeed");
-    load_palette(&bytes).expect("artkal_s palette must parse")
+    let bytes = include_bytes!("../../../palettes/artkal_s.json");
+    load_palette(bytes).expect("artkal_s palette must parse")
 }
 
 fn bench_generate_pattern(c: &mut Criterion) {

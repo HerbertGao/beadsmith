@@ -67,7 +67,7 @@
 **D8 — Criterion 基准：dev-dep、5 尺寸、in-bench 合成输入、测端到端、不进 CI 矩阵。**
 
 - `criterion`（`version="0.8", default-features=false`，关 html/cargo-criterion 保精简）作 `bead-core` **dev-dependency**（非 runtime；INIT 技术栈已列）；`crates/bead-core/benches/bench.rs` + `[[bench]] name="bench" harness=false`。
-- **输入 bench 内合成**（同 M6 `demo_png` 公式 `RgbImage::from_fn` → 编码 PNG 字节，每尺寸 setup 一次），**合成源图须为目标的 2×**（每维加倍）——否则 `imageops::resize` 命中「源=目标」拷贝短路（`sample.rs:984`）、跳过 Lanczos 重采样、基准漏测 resize 成本；**不 committed 大图**；palette 读 `palettes/artkal_s.json`（经 `CARGO_MANIFEST_DIR/../..`）。
+- **输入 bench 内合成**（同 M6 `demo_png` 公式 `RgbImage::from_fn` → 编码 PNG 字节，每尺寸 setup 一次），**合成源图须为目标的 2×**（每维加倍）——否则 `imageops::resize` 命中「源=目标」拷贝短路（`sample.rs:984`）、跳过 Lanczos 重采样、基准漏测 resize 成本；**不 committed 大图**；palette 经 `include_bytes!` 编译期内嵌（bead-core 运行时不碰 fs，rule 1/D2）。
 - 5 尺寸（40×40 / 80×100 / 100×100 / 150×150 / 300×300）作一个 `benchmark_group` + 每尺寸 `BenchmarkId`（一组五输入、干净对比表）；测**库入口 `generate_pattern` 端到端**（M8/FFI 与 CLI 真调的东西）。可选第二组拆 stage（`image_to_grid`/`match_pattern`/`render_*`）给 Phase-2 优化留基线——nice-to-have、非必需。
 - **不进 CI 矩阵**（3× 成本 + 噪声）；`cargo bench` 按需跑。lint job（ubuntu）的 clippy `--all-targets` 已编译 `benches/` → **编译防 bit-rot 免费覆盖**（仅 ubuntu 编译、足够）。
 
