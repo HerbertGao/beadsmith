@@ -48,7 +48,11 @@ pub struct PixelGrid {
 ///
 /// Derives `PartialEq` (for `assert_eq!` and golden comparison) but
 /// deliberately **not** `Eq` — same choice as `PixelGrid` (design D1).
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Derives `serde::Serialize` (M6-D4/D5): the pattern is serialized into the
+/// CLI's `pattern.json` (via `pipeline::pattern_json`). It is **write-only** —
+/// no `Deserialize` (M6 only writes patterns, never reads them back, D5).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct BeadPattern {
     /// Pattern width in cells.
     pub width: u32,
@@ -84,7 +88,8 @@ impl BeadPattern {
 /// Derives `PartialEq` (for `assert_eq!` and golden comparison) but
 /// deliberately **not** `Eq` — same choice as `PixelGrid` / `BeadPattern`
 /// (design D8).
-#[derive(Debug, Clone, PartialEq)]
+// ponytail: 序列化真相源本身、不立 DTO 镜像（规则 3 / M4-D1 反脱节）；只 Serialize 不 Deserialize（M6 只写不读）
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct ColorStat {
     /// The palette color's stable code (from `palette.colors[index].code`).
     pub code: String,
