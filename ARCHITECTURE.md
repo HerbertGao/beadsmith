@@ -70,6 +70,15 @@ UI, clipboard, permissions.
 All algorithms must be deterministic. No randomness unless explicitly
 requested.
 
+Scope (clarified at M7): "identical output for identical input" is
+**per-platform / per-architecture / per-`image`-version**. Pure-integer paths
+(matcher, statistics, renderer geometry) are bit-identical across architectures;
+the floating-point `Lanczos3` resize path is **not** guaranteed bit-identical
+across architectures / libm (its weights run `f32::sin`). Golden byte-freezing is
+therefore canonical-only on arm64 Linux (CI `ubuntu-24.04-arm`); other platforms
+verify float-independent structural invariants. This is exactly what the golden
+tests and the future "CLI == FFI" (same-device) check require.
+
 ---
 
 ## bead-core
@@ -355,7 +364,9 @@ Use `thiserror` inside core. Expose `Result<T, BeadError>` everywhere.
 
 - **Unit Tests** — per module (palette, matcher, statistics)
 - **Golden Tests** — verify output stability; store under `tests/golden/`
-- **Benchmark Tests** — use Criterion; track runtime, memory, throughput
+  (arm64-Linux-canonical byte freeze + cross-platform structural invariants, Rule 3)
+- **Benchmark Tests** — use Criterion; track runtime (memory / throughput
+  deferred to Phase-2 — see INIT.md → Benchmark Tests)
 
 ---
 

@@ -275,16 +275,26 @@ Given a fixed image, fixed palette, and fixed settings, the expected output
 must not change. Stored under `tests/golden/`:
 
 ```text
-preview.png
 pattern.json
 summary.txt
+preview.png
+grid.png
 ```
+
+Implemented at M7: `grid.png` is also frozen (every byte the CLI writes enters
+the golden set). The byte assertion is canonical-only on **arm64 Linux** (CI
+`ubuntu-24.04-arm`); other platforms assert float-independent structural
+invariants, since the default `Lanczos3` resize runs `f32::sin` whose result is
+not bit-identical across architectures / libm.
 
 ### Benchmark Tests
 
 Use Criterion. Benchmark sizes: 40×40, 80×100, 100×100, 150×150, 300×300.
 
-Track execution time and memory usage.
+Track execution time and memory usage. (M7 ships the execution-time benchmarks;
+**memory tracking is deferred to Phase-2** — Phase-1 is single-threaded with
+`O(width·height)` allocation and no actionable memory signal until rayon /
+quantization arrive.)
 
 ---
 
