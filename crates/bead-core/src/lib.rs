@@ -7,11 +7,13 @@ pub mod image;
 pub mod matcher;
 pub mod models;
 pub mod palette;
+pub mod statistics;
 
 pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
 pub use matcher::{match_pattern, ColorMatcher, RgbMatcher};
-pub use models::{BeadPattern, PixelGrid};
+pub use models::{BeadPattern, ColorStat, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
+pub use statistics::{count_colors, generate_summary, total_beads};
 
 /// The shared engine error type. Fallible public APIs return
 /// `Result<T, BeadError>`; total APIs (e.g. `match_pattern`,
