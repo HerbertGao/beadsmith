@@ -31,8 +31,12 @@ created when a milestone first needs them, not up front.
    "CLI == FFI" check depend on it.
 3. **`BeadPattern` is the source of truth.** Preview, statistics, and exports
    all derive from it. Never derive statistics from rendered images.
-4. **`pipeline::generate_pattern` is the only entry point** for external
-   callers (CLI, FFI). Don't reach into internal modules from outside.
+4. **`pipeline::generate_pattern` is the only generation/orchestration entry**
+   for external callers (CLI, FFI): don't re-assemble the
+   image→match→stats→render pipeline outside it. Input parsing (`load_palette`)
+   and output serialization (`pattern_json`) stay public helpers — the rule
+   forbids redoing orchestration externally, not exposing more than one `pub fn`.
+   Don't reach into internal pipeline stages from outside.
 5. **The CLI is the contract.** If a frontend disagrees with `bead-cli`, the
    bug is in the frontend.
 

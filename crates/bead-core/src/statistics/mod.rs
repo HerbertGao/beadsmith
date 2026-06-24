@@ -6,7 +6,8 @@
 //! Three total primitives (design D7 — no `Result`, no new `BeadError` variant):
 //! [`count_colors`], [`total_beads`], [`generate_summary`]. They are library /
 //! pipeline-reuse primitives, not FFI entry points (design D8); `pipeline::
-//! generate_pattern` (M6) is the single external entry and packages them.
+//! generate_pattern` (M6) is the single generation/orchestration entry and
+//! packages them.
 
 use crate::models::{BeadPattern, ColorStat};
 use crate::palette::Palette;
