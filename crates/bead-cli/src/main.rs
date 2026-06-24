@@ -3,7 +3,7 @@
 //! context live here (CLAUDE rule 1); `bead-core` stays fs-free.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use bead_core::pipeline::pattern_json;
@@ -86,13 +86,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn generate(
-    input: &PathBuf,
-    palette: &PathBuf,
-    width: u32,
-    height: u32,
-    output: &PathBuf,
-) -> Result<()> {
+fn generate(input: &Path, palette: &Path, width: u32, height: u32, output: &Path) -> Result<()> {
     let img_bytes =
         fs::read(input).with_context(|| format!("failed to read input image {input:?}"))?;
     let pal_bytes =
@@ -130,7 +124,7 @@ fn generate(
     Ok(())
 }
 
-fn palette_validate(path: &PathBuf) -> Result<()> {
+fn palette_validate(path: &Path) -> Result<()> {
     let bytes = fs::read(path).with_context(|| format!("failed to read palette {path:?}"))?;
     load_palette(&bytes).with_context(|| format!("invalid palette {path:?}"))?;
     println!("palette {path:?} is valid");
