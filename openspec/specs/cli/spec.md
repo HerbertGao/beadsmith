@@ -1,7 +1,13 @@
 # cli 规范
 
 ## 目的
-待定 - 由归档变更 add-cli-pipeline 创建。归档后请更新目的。
+定义 `bead-cli` 的**命令面与文件输出契约**——CLI 是契约（规则 5：前端与 `bead-cli` 不一致即前端 bug）。`generate` 子命令读
+图片字节 + 调色板，调 `pipeline::generate_pattern`，在输出目录写出 INIT 约定的四个文件（`preview.png`/`grid.png`/`pattern.json`/
+`summary.txt`；自动建目录、**覆盖写**以保确定性重跑）；`palette validate` 真实校验（`load_palette` 即完整校验）；`palette list`/
+`inspect` 为显式「尚未实现」桩（非零退出、不静默成功、不 panic）。**所有文件系统读写与 `anyhow` 错误语境只在 CLI 层**，
+`bead-core` 保持无 fs（规则 1）；fs 失败按读/写两段划分、一律非零退出 + 点名涉事路径、不 panic；退出码语义化（0 成功 / 1 业务
+失败 / 2 参数错误）。
+
 ## 需求
 ### 需求:generate 子命令端到端写出四个文件
 `bead-cli generate --input <img> --palette <json> --width <w> --height <h> --output <dir>` 必须**真实实现**：读取 `--input` 的图片字节与

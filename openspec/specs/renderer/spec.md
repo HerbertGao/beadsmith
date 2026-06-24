@@ -1,7 +1,13 @@
 # renderer 规范
 
 ## 目的
-待定 - 由归档变更 add-preview-renderer 创建。归档后请更新目的。
+定义从 `BeadPattern` + `&Palette` 渲染 PNG 字节的两个总函数：`render_preview` 产**无坐标**的成品珠外观（每格 `cell_size ×
+cell_size` 实心方块、行优先），`render_grid` 产**带行号/列号 + 网格线**的拼装图（1-indexed、每 10 格加粗分隔并标坐标数字，用
+内置位图数字字体、无字体依赖）。二者**只从 `BeadPattern.cells`（调色板下标）+ palette 派生**颜色（每格取 `palette.colors[idx].rgb`），
+**禁止**读 `PixelGrid` 原始 RGB、**禁止**从任何渲染图反推、**禁止**碰文件系统（返 `Result<Vec<u8>, BeadError>` 的内存 PNG 字节）。
+PNG 编码参数钉死 → 同输入同依赖版本逐字节稳定（golden 与「CLI == FFI」前提）；越界下标、空网格（0 维度）、过大输出缓冲、
+`cell_size` 非法均确定性返 `Err` 或可观测信号、**不 panic**。`BeadShape` 当前仅 `Square`，留 seam 供后续扩展。
+
 ## 需求
 ### 需求:从 BeadPattern 渲染无坐标 preview
 `render_preview` 必须接受一个 `BeadPattern`、一个 `&Palette` 与一个 `&RenderOptions`，返回 `Result<Vec<u8>, BeadError>`

@@ -1,7 +1,14 @@
 # pipeline 规范
 
 ## 目的
-待定 - 由归档变更 add-cli-pipeline 创建。归档后请更新目的。
+定义 `bead-core` 面向外部调用方（CLI、未来 FFI）的**唯一生成/编排入口** `generate_pattern`：确定性串联既有原语
+（`image_to_grid` → matcher → 统计 → 渲染），把入参的**同一份 `Palette`** 喂给 matcher / `count_colors`/`generate_summary` /
+`render_*`（单一-`Palette` 不变量，从类型上消灭「配错调色板」），产出打包的 `GenerateResult`（`pattern` + `stats` + `summary` +
+`brand` + 两张 PNG 字节），使 CLI 与 FFI 消费**同一个**结果对象、不可能静默分歧（「CLI == FFI」的结构前提）。并定义 `pattern.json`
+的序列化形状——由 `pattern_json(&GenerateResult) -> String`（纯数据、不可失败）产出。管线**不含算法**、**不新增 `BeadError` 变体**
+（透传各阶段既有错误）、**不碰文件系统**（`image_bytes`/`&Palette` 由调用方读入）；确定性以「同平台 + 同依赖版本」为界（默认
+`Lanczos3` f32 重采样非跨架构 byte 稳，跨架构 golden 归 M7）。
+
 ## 需求
 ### 需求:generate_pattern 是唯一的生成/编排入口并忠实串联各原语
 `pipeline::generate_pattern` 必须是 `bead-core` 面向外部调用方（CLI、未来 FFI）的**唯一完整生成/编排入口**：外部**禁止**绕过它、在管线外**自行拼装
