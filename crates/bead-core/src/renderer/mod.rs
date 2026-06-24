@@ -2,7 +2,8 @@
 //! `render_preview` (the finished bead-art look, no coordinates) and a
 //! `render_grid` (row/column numbers + grid lines for laying out beads). Pure
 //! data in, PNG bytes out — **no filesystem, no UI, no platform assumptions**
-//! (CLAUDE rule 1); the CLI/FFI writes the bytes to `preview.png` / `grid.png`.
+//! (CLAUDE rule 1); the caller persists or transmits the returned bytes as it
+//! sees fit (these are the M5 `preview.png` / `grid.png` outputs).
 //!
 //! Color is derived **only** from `BeadPattern.cells` (palette indices): each
 //! cell `idx = cells[y * width + x]` looks up `palette.colors[idx].rgb`. The

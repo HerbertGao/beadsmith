@@ -131,7 +131,7 @@
   `Err(InvalidImage)`、**不触达 RgbImage::new**：(i) `width=height=u32::MAX` + `cell_size:1`（preview，`3*out²` 须 u128+定序才不溢出）；
   (ii) `width=height=250_000_000` + `cell_size:10`；(iii) **R3-B1 margin 角**：`render_grid` 对 `10×10` + `cell_size≈2_386_092_945`
   （使 `9*scale > u32::MAX`，margin 在 `u32` 会先溢出）→ `Err`（证明 margin 在 `u128` 算）；(iv) **R3-M-ord 定序锁**：`width=height=cell=u32::MAX`
-  （→ `out_* ≈ u32::MAX² ≈ 1.84e19`，**预夹** `3*out² ≈ 1.0e39 > u128::MAX 3.4e38**） → `Err`（正序：① `out_*>u32::MAX` 立即 `Err`、永不算 bytes；
+  （→ `out_* ≈ u32::MAX² ≈ 1.84e19`，**预夹** `3*out² ≈ 1.0e39 > u128::MAX (3.4e38)`） → `Err`（正序：① `out_*>u32::MAX` 立即 `Err`、永不算 bytes；
   **误把 bytes 提前到 ① 之前算的实现会在 `u128` 乘法处 panic**，本例据此捕获错序。注：用「out 仅略超 u32::MAX」**抓不到**此 bug——那时
   `3*out²≈5.5e19<u128::MAX` 不溢出，R4-M2 修正）；**(a)(b)(c) debug 与 `--release` 均不 panic**（spec「退化/超大输入」三场景 / D7 / R2-B1 / R3-B1 / R3-M-ord / R2-M2 / D10.4+4b）
 - [x] 5.6 `render_only_from_cells`——同一 `cells` 配两份**RGB 不同**但等长的 palette，断言渲染像素随 palette 变（证明颜色
