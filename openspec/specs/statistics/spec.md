@@ -5,7 +5,6 @@
 count 降序-最低下标平局排序；`total_beads` 取网格豆总数；`generate_summary` 产出逐字匹配 INIT「Summary Format」的
 可复制文本。统计是派生产物，`ColorStat` 永不作为 `BeadPattern` 字段。纯整数计数（无 `HashMap`/`f32`/`rayon`）→ 同
 输入逐字节相同、跨架构位精确、可 golden 钉死；越界下标确定性跳过、不 panic。纯库行为，无文件系统/UI/平台依赖。
-
 ## 需求
 ### 需求:从 BeadPattern 统计每色豆数
 `count_colors` 必须接受一个 `BeadPattern` 与一个 `&Palette`，遍历 `BeadPattern.cells`（调色板下标）逐格计数，
@@ -84,13 +83,18 @@ matcher 禁止 panic 的契约延伸至此。空调色板（`colors.len()==0`）
 - **那么** 不 panic，越界格不计入任何 `ColorStat` 的 `count`，但仍计入 `total_beads`（结果满足 `Σ count < total_beads`）
 
 ### 需求:ColorStat 输出形状
-`ColorStat` 必须含 `code: String`、`name: String`、`count: u32`，derive `Debug + Clone + PartialEq`，
-**不 derive `Eq`**（与 `PixelGrid`/`BeadPattern` 一致；`assert_eq!`/golden 比较只需 `PartialEq`）。`count` 用 `u32`
-（最大为 `width*height`）。
+`ColorStat` 必须含 `code: String`、`name: String`、`count: u32`，derive `Debug + Clone + PartialEq + Serialize`
+（`Serialize` 由 M6/add-cli-pipeline 追加，使 `ColorStat` 可直接进入 `pattern.json` 的 `stats`——序列化真相源本身、不另立会漂移的 DTO，见 M6-D5），
+**不 derive `Eq`**（与 `PixelGrid`/`BeadPattern` 一致；`assert_eq!`/golden 比较只需 `PartialEq`）。**不 derive `Deserialize`**（M6 只写不读；
+未来「读回 pattern」时再非破坏地追加）。`count` 用 `u32`（最大为 `width*height`）。
 
 #### 场景:ColorStat 携带 code、name 与整数 count
 - **当** `count_colors` 为某用到的色产出一个 `ColorStat`
 - **那么** 它的 `code`/`name` 等于 `palette.colors[该下标]` 的对应字段，`count`（`u32`）等于该下标在 `cells` 中的出现次数
+
+#### 场景:ColorStat 可序列化进 pattern.json 的 stats
+- **当** 把一个 `ColorStat` 用 `serde_json` 序列化
+- **那么** 产出含 `code`、`name`、`count` 三字段的 JSON 对象，可作为 `pattern.json` 中 `stats` 数组的元素；且序列化是确定性的（同值同字节）
 
 ### 需求:重复 RGB 的调色板色按下标分别计数
 `count_colors` **必须**按调色板下标分别计数、**禁止**按 RGB 合并：当调色板含多个 RGB 相同但 `code` 不同的色时
