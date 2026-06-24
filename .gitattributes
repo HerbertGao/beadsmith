@@ -1,0 +1,3 @@
+tests/golden/*.json -text
+tests/golden/*.txt -text
+tests/golden/*.png binary
