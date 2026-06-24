@@ -43,8 +43,8 @@ pub struct PixelGrid {
 /// `cells.len() == width * height`, otherwise by-index cell access is wrong
 /// (same caveat as `PixelGrid`).
 ///
-/// There is **no `stats` field** in M3 — per-color statistics arrive in M4
-/// (design D4).
+/// There is **no `stats` field** — per-color statistics are a derived artifact
+/// (see M4-D1).
 ///
 /// Derives `PartialEq` (for `assert_eq!` and golden comparison) but
 /// deliberately **not** `Eq` — same choice as `PixelGrid` (design D1).
@@ -71,6 +71,27 @@ impl BeadPattern {
         let idx = y as usize * self.width as usize + x as usize;
         self.cells.get(idx).copied()
     }
+}
+
+/// One row of per-color statistics derived from a [`BeadPattern`]: a palette
+/// color's `code` / `name` and how many times it occurs in the pattern.
+///
+/// `count` is the number of times this color appears in `BeadPattern.cells`
+/// (the count for one palette index); it is at most `width * height`. Produced
+/// by [`crate::statistics::count_colors`] — a derived artifact, never stored on
+/// `BeadPattern` (see M4-D1).
+///
+/// Derives `PartialEq` (for `assert_eq!` and golden comparison) but
+/// deliberately **not** `Eq` — same choice as `PixelGrid` / `BeadPattern`
+/// (design D8).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColorStat {
+    /// The palette color's stable code (from `palette.colors[index].code`).
+    pub code: String,
+    /// The palette color's human-readable name (from `palette.colors[index].name`).
+    pub name: String,
+    /// Occurrences of this color in `BeadPattern.cells`; at most `width * height`.
+    pub count: u32,
 }
 
 #[cfg(test)]

@@ -202,7 +202,7 @@ pub struct BeadPattern {
     pub width: u32,
     pub height: u32,
     pub cells: Vec<u16>,         // row-major palette indices; cells[y*width+x]
-    pub stats: Vec<ColorStat>,  // filled from M4; M3's BeadPattern has no stats field
+    // No stats field. Statistics are a derived artifact (count_colors); see M4-D1.
 }
 ```
 

@@ -84,7 +84,8 @@ color maps to the nearest one (asserted in a unit test). Deterministic.
 **Goal:** count beads per color from the pattern.
 
 - `statistics` module: `count_colors`, `total_beads`, `generate_summary`.
-- `ColorStat` model; `BeadPattern.stats` populated.
+- `ColorStat` model; statistics derived from `BeadPattern`
+  (count_colors/total_beads/generate_summary).
 - Summary text in the INIT.md format (copyable, no CSV).
 
 **Done when:** counts derive **only** from `BeadPattern` (never from rendered
