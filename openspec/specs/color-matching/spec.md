@@ -1,7 +1,11 @@
 # color-matching 规范
 
 ## 目的
-待定 - 由归档变更 add-color-matching 创建。归档后请更新目的。
+定义把 `PixelGrid`（原始 RGB）映射为 `BeadPattern`（行优先调色板下标）的配色交接：`match_pattern` 是唯一生产点，
+逐格用 RGB 平方欧氏距离取最近调色板色、平局取最低下标（确定性门）。`BeadPattern { width, height, cells: Vec<u16> }`
+不含 `stats` 字段——它是配色后的管线真理源，下游预览/统计/导出皆从 `cells` 派生、绝不从渲染图反推。确定性：纯整数
+距离与下标键，跨架构位精确。纯库行为，无文件系统/UI/平台依赖。
+
 ## 需求
 ### 需求:从 PixelGrid 产出 BeadPattern
 `match_pattern` 必须接受一个 `PixelGrid` 与一个 `&dyn ColorMatcher`，把每格的原始 RGB 映射到

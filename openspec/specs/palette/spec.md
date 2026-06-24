@@ -1,7 +1,11 @@
 # palette 规范
 
 ## 目的
-待定 - 由归档变更 add-palette-loader 创建。归档后请更新目的。
+定义拼豆调色板的加载与校验：从 JSON 字节解析出 `Palette { brand, colors: Vec<PaletteColor> }`
+（`PaletteColor { code, name, rgb }`），按声明顺序保序、用有序 `Vec` 扫描而非 `HashMap`；校验结构合法性
+（非空、`code` 唯一、hex 合法），并以确定性的 `BeadError` 报错。调色板是配色（color-matching）与统计
+（statistics）的颜色真相源——下标 `i` 恒等于 `colors[i]`。纯库行为：字节进、`Palette` 出，不碰文件系统/UI/平台。
+
 ## 需求
 ### 需求:从 JSON 字节加载调色板
 `load_palette` 必须接受 JSON 字节（`&[u8]`）并返回内存中的 `Palette`。引擎禁止读取

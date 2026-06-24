@@ -1,7 +1,11 @@
 # statistics 规范
 
 ## 目的
-待定 - 由归档变更 add-statistics 创建。归档后请更新目的。
+定义从 `BeadPattern`（配色后真理源）按需派生的每色统计：`count_colors` 逐格按调色板下标计数、只列用到的色、按
+count 降序-最低下标平局排序；`total_beads` 取网格豆总数；`generate_summary` 产出逐字匹配 INIT「Summary Format」的
+可复制文本。统计是派生产物，`ColorStat` 永不作为 `BeadPattern` 字段。纯整数计数（无 `HashMap`/`f32`/`rayon`）→ 同
+输入逐字节相同、跨架构位精确、可 golden 钉死；越界下标确定性跳过、不 panic。纯库行为，无文件系统/UI/平台依赖。
+
 ## 需求
 ### 需求:从 BeadPattern 统计每色豆数
 `count_colors` 必须接受一个 `BeadPattern` 与一个 `&Palette`，遍历 `BeadPattern.cells`（调色板下标）逐格计数，
