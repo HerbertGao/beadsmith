@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/bead-core", "crates/bead-cli"]
+members = ["crates/bead-core", "crates/bead-cli", "crates/bead-ffi"]
 
 [workspace.package]
 version = "0.1.0"

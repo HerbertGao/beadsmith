@@ -1,0 +1,32 @@
+[package]
+name = "bead-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+# Host builds the two crate types we actually verify this milestone:
+# cdylib (loaded by the pure-Dart package via dart:ffi) and lib (so the
+# in-crate #[test]s and FRB codegen can use the API). staticlib is M9
+# (real-device archive linkage) — not built or verified here (YAGNI).
+crate-type = ["cdylib", "lib"]
+
+[lints.rust]
+# The `#[frb(...)]` macro emits an internal `#[cfg(frb_expand)]` (set only by
+# `cargo expand` during codegen), which rustc flags as an unknown cfg. Declare
+# it expected so a normal `cargo build` is warning-free.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[dependencies]
+bead-core = { path = "../bead-core" }
+# Pinned to an exact version: the runtime crate MUST equal the
+# flutter_rust_bridge_codegen tool version (2.12.0) so regenerated glue
+# matches. `=` forbids a `^` minor bump from silently desyncing them.
+flutter_rust_bridge = "=2.12.0"
+
+[dev-dependencies]
+# Test-only: in-crate error-path tests build PNG fixtures and parse the
+# pattern_json. Dev-deps never enter the normal dependency tree, so bead-core /
+# bead-cli stay unaffected and FRB stays confined to bead-ffi.
+image = { workspace = true }
+serde_json = { workspace = true }

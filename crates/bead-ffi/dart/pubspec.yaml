@@ -1,0 +1,18 @@
+name: bead_ffi
+description: >-
+  Pure-Dart host bridge to the Beadsmith bead-core engine via
+  flutter_rust_bridge. M8 host-only (macOS/Linux); the generated glue under
+  lib/src/ is the stable import surface M9's PatternEngine extends.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  # MUST match the pinned Rust crate / codegen tool version (2.12.0) so the
+  # generated glue links against a matching runtime.
+  flutter_rust_bridge: 2.12.0
+
+dev_dependencies:
+  test: ^1.25.0
