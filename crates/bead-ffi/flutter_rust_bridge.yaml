@@ -11,3 +11,7 @@ dart_entrypoint_class_name: BeadFfi
 # Format generated Dart with the pinned dart formatter so the no-diff guard
 # checks "signatures match", not "formatter version matches" (task 4.2).
 dart_format_line_length: 80
+
+# Host-only package: no web/wasm target — drop the web module so the package
+# ships no glue that would fail against an unsupported runtime (CodeRabbit PR#10).
+web: false

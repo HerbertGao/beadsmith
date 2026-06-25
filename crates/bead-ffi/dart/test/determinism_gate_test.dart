@@ -60,6 +60,7 @@ File? _hostDylib(String repoRoot) {
   final candidates = <String>[
     if (Platform.isMacOS) '$repoRoot/target/debug/libbead_ffi.dylib',
     if (Platform.isLinux) '$repoRoot/target/debug/libbead_ffi.so',
+    if (Platform.isWindows) '$repoRoot/target/debug/bead_ffi.dll',
   ];
   for (final p in candidates) {
     final f = File(p);
@@ -73,11 +74,12 @@ void main() {
 
   // ---- toolchain / fixture availability (5.4: skip + log, never false-green) --
   if (repoRootDir == null) {
-    test('CLI == FFI determinism gate', () {
-      // ignore: avoid_print
-      print('SKIP: could not locate workspace Cargo.toml from '
-          '${Directory.current.path}; cannot run the gate.');
-    }, skip: 'workspace root not found');
+    // Emit the reason BEFORE registering — a `test(skip:)` body never runs, so a
+    // print inside it would be dead code (the runner shows `skip:` either way).
+    // ignore: avoid_print
+    print('SKIP: could not locate workspace Cargo.toml from '
+        '${Directory.current.path}; cannot run the gate.');
+    test('CLI == FFI determinism gate', () {}, skip: 'workspace root not found');
     return;
   }
   final repoRoot = repoRootDir.path;
@@ -94,11 +96,11 @@ void main() {
     if (cargo == null) 'cargo on PATH',
   ];
   if (missing.isNotEmpty) {
-    test('CLI == FFI determinism gate', () {
-      // ignore: avoid_print
-      print('SKIP: host toolchain/fixtures unavailable: '
-          '${missing.join(", ")}. Gate not run.');
-    }, skip: 'unavailable: ${missing.join(", ")}');
+    // ignore: avoid_print
+    print('SKIP: host toolchain/fixtures unavailable: '
+        '${missing.join(", ")}. Gate not run.');
+    test('CLI == FFI determinism gate', () {},
+        skip: 'unavailable: ${missing.join(", ")}');
     return;
   }
 
@@ -232,7 +234,10 @@ void main() {
 /// null if not found. Uses `command -v` via the shell to honor PATH.
 String? _which(String exe) {
   try {
-    final r = Process.runSync('/bin/sh', ['-c', 'command -v $exe']);
+    // Windows has no `/bin/sh`; use `where`. POSIX honors PATH via `command -v`.
+    final r = Platform.isWindows
+        ? Process.runSync('where', [exe])
+        : Process.runSync('/bin/sh', ['-c', 'command -v $exe']);
     if (r.exitCode == 0 && (r.stdout as String).trim().isNotEmpty) return exe;
   } catch (_) {/* fall through */}
   return null;
