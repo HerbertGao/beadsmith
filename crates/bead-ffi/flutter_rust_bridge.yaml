@@ -1,0 +1,13 @@
+# flutter_rust_bridge_codegen config (tool version pinned to 2.12.0; see
+# crates/bead-ffi/Cargo.toml `flutter_rust_bridge = "=2.12.0"`). Regenerating
+# with this exact tool version must produce a no-diff result (task 4.2).
+#
+# Pure-Dart host package (no Flutter app, task 4.1): generated glue lands in a
+# stable Dart package under dart/ that M9's infrastructure/PatternEngine extends.
+rust_input: crate::api
+rust_root: .
+dart_output: dart/lib/src
+dart_entrypoint_class_name: BeadFfi
+# Format generated Dart with the pinned dart formatter so the no-diff guard
+# checks "signatures match", not "formatter version matches" (task 4.2).
+dart_format_line_length: 80

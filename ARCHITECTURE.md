@@ -332,6 +332,12 @@ Bridge layer used by Flutter. No business logic.
 Dart Objects → Rust Objects → Rust Objects → Dart Objects
 ```
 
+M8 ships a **host-only** thin bridge: it wraps a single `generate_pattern` call
+whose boundary is `width`/`height` only, `bead-core` stays zero-change, and the
+host dynamic library is proven against the CLI by a same-device Dart determinism
+test. Cross-compilation (iOS/Android, XCFramework/jniLibs) and the
+filter/cell_size/shape option knobs are deferred to M9.
+
 ---
 
 ## Flutter Architecture

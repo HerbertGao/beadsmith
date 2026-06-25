@@ -2,3 +2,4 @@
 .DS_Store
 /result
 tests/golden/*.actual
+.dart_tool/
