@@ -332,11 +332,21 @@ Bridge layer used by Flutter. No business logic.
 Dart Objects → Rust Objects → Rust Objects → Dart Objects
 ```
 
-M8 ships a **host-only** thin bridge: it wraps a single `generate_pattern` call
-whose boundary is `width`/`height` only, `bead-core` stays zero-change, and the
-host dynamic library is proven against the CLI by a same-device Dart determinism
-test. Cross-compilation (iOS/Android, XCFramework/jniLibs) and the
-filter/cell_size/shape option knobs are deferred to M9.
+M8 shipped a thin bridge: it wraps a single `generate_pattern` call whose
+boundary is `width`/`height` only, `bead-core` stays zero-change, and the host
+dynamic library is proven against the CLI by a same-device Dart determinism
+test. The filter/cell_size/shape option knobs remain engine defaults.
+
+M9 added mobile packaging with **no bridge-logic change** (the crate gains a
+`staticlib` crate-type alongside `cdylib`). **iOS cross-compilation is done and
+verified**: `scripts/build-ios.sh` produces `libbead_ffi.a` for device
+(`aarch64-apple-ios`) and simulator (`aarch64-apple-ios-sim`,
+`x86_64-apple-ios`), linked into the Flutter Runner and loaded via FRB's
+`ExternalLibrary.process()`. **Android scaffold is in place but unverified**:
+jniLibs directory layout + a Gradle/NDK build hook + `ExternalLibrary.open`
+loader branch exist, but actual cross-compilation and on-device validation are
+deferred to a user environment with the Android SDK/NDK installed
+(see `apps/mobile/android/RUST_BUILD_TODO.md`).
 
 ---
 

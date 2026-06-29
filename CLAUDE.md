@@ -9,7 +9,7 @@ Beadsmith — a local-first pixel bead pattern generator. A reusable Rust engine
 Flutter mobile later) wrap it. Everything runs on-device; no backend.
 
 Read `INIT.md` (product), `ARCHITECTURE.md` (internals), and `ROADMAP.md`
-(milestones M0–M9) before non-trivial work. We are currently at **M0**.
+(milestones M0–M9) before non-trivial work. We are currently at **M9**.
 
 ## Layout
 

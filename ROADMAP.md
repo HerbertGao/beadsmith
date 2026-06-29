@@ -156,8 +156,9 @@ result the CLI produces** for the same input.
 
 **Goal:** a shippable app.
 
-- Flutter app under `apps/mobile`, layered presentation / application / domain
-  / infrastructure (per ARCHITECTURE.md).
+- Flutter app under `apps/mobile`, layered as the MVP three layers
+  presentation / application / infrastructure (domain deferred until
+  persistence / `SaveProject` lands — see ARCHITECTURE.md).
 - Screens: `HomePage` → `CropPage` → `GeneratePage` → `ResultPage`.
 - `image_picker`, `crop_your_image`, `riverpod`, `go_router`.
 - Copy-summary to clipboard; bundle the default palettes.
@@ -166,6 +167,11 @@ result the CLI produces** for the same input.
 **Done when:** the success criteria from INIT.md are met (pick image →
 generate → preview → counts → copy summary, fully offline) and signed release
 builds upload to App Store Connect and Google Play Console.
+
+> **Status:** the offline app is achieved this milestone — iOS is cross-compiled
+> and the four-screen flow runs on-device, fully offline. Store signing,
+> metadata, and upload to App Store Connect / Google Play are **deferred to a
+> separate later change** (release engineering, not MVP function).
 
 ---
 

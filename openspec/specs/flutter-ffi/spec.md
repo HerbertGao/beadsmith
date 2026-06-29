@@ -3,8 +3,9 @@
 ## 目的
 定义 `bead-ffi` 薄桥的契约——`bead-core` 到 Dart 的**零逻辑桥**，让 Flutter 端调用与 `bead-cli`
 **逐字节相同**的引擎（ROADMAP「CLI == FFI」核心闸门）。规定边界类型（入/出/错误映射）、「无业务逻辑、
-唯一生成入口 `pipeline::generate_pattern`」约束（CLAUDE 规则 4）、host-only 范围，以及「CLI == FFI 同机
-逐字节相等」的决定性验收。
+唯一生成入口 `pipeline::generate_pattern`」约束（CLAUDE 规则 4）、iOS 交叉编译与 Flutter 运行时装载的打包
+范围（桥逻辑零改动，仅新增 `staticlib` crate-type，以 FRB `ExternalLibrary.process()` 装载），以及
+「CLI == FFI 同机逐字节相等」的决定性验收。
 
 ## 需求
 ### 需求:bead-ffi 是 generate_pattern 的零逻辑薄桥
