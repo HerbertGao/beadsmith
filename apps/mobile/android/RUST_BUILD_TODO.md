@@ -17,7 +17,7 @@ Android toolchain is absent on the build machine, so nothing here has been run.
 1. Android SDK + NDK installed (e.g. via Android Studio), `local.properties`
    pointing at the SDK.
 2. The three Android rust targets:
-   ```
+   ```bash
    rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
    ```
 3. NDK linkers reachable by cargo — easiest via

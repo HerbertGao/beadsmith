@@ -51,7 +51,9 @@ Architecture」整段(全 4 层)标注「Future implementation」;其中 domain 
 
 `GeneratePage` 必须让用户指定目标拼豆网格尺寸 `width` × `height`(一像素一豆),并把该尺寸作为
 `generate` 的 `width` / `height` 入参转发。生成失败时(桥抛出异常)必须向用户展示该异常消息(已在
-`bead-ffi` 边界扁平化为可读文案),禁止静默失败或崩溃。
+`bead-ffi` 边界扁平化为可读文案),禁止静默失败或崩溃。**App 必须在调桥前对 `width`/`height` 施加合理
+上界守卫**(引擎对超大尺寸无上限分配,`w·h·3` 字节的急切分配会触发不可捕获的 alloc abort 崩溃):越界
+时展示消息、不调用引擎。本里程碑取 `1..=1000`(远超 ROADMAP 最大示例 300×300)。
 
 #### 场景:转发用户尺寸
 - **当** 用户在 `GeneratePage` 设定 width × height 并点击生成
@@ -60,6 +62,10 @@ Architecture」整段(全 4 层)标注「Future implementation」;其中 domain 
 #### 场景:生成失败显示消息
 - **当** `generate` 抛出异常(如无法解码的图像或非法尺寸)
 - **那么** App 必须向用户展示该异常的消息文案,且不崩溃
+
+#### 场景:超大尺寸被上界守卫拦截
+- **当** 用户输入超出上界(如 `99999`)的 `width` 或 `height` 并点击生成
+- **那么** App 必须展示越界消息、**不调用引擎、不崩溃**(引擎无上限分配会先于返回触发 alloc abort)
 
 ### 需求:内置默认调色板随 App 离线分发
 

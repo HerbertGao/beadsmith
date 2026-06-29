@@ -33,6 +33,15 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Mobile-only (M9): desktop/web platforms are not supported. Ignore any
+# flutter-regenerated platform + ephemeral artifacts so `flutter` commands
+# don't re-track them.
+/linux/
+/macos/
+/web/
+/windows/
+**/ephemeral/
+
 # Symbolication related
 app.*.symbols
 

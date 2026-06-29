@@ -65,8 +65,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
             width: width,
             height: height,
           );
+      if (!mounted) return;
       ref.read(generateResultProvider.notifier).set(output);
-      if (mounted) context.push('/result');
+      context.push('/result');
     } catch (e) {
       // Flattened bridge exception message — show it, never crash (spec).
       if (mounted) setState(() => _error = e.toString());

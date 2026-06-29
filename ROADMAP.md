@@ -162,11 +162,13 @@ result the CLI produces** for the same input.
 - Screens: `HomePage` → `CropPage` → `GeneratePage` → `ResultPage`.
 - `image_picker`, `crop_your_image`, `riverpod`, `go_router`.
 - Copy-summary to clipboard; bundle the default palettes.
-- iOS + Android release builds, store metadata, icons, signing.
+- Bundle the default palettes; copy-summary to clipboard.
 
-**Done when:** the success criteria from INIT.md are met (pick image →
-generate → preview → counts → copy summary, fully offline) and signed release
-builds upload to App Store Connect and Google Play Console.
+**Done when:** the success criteria from INIT.md are met — pick image →
+generate → preview → counts → copy summary, fully offline — verified on iOS (see
+**Status**). Signed release builds, store metadata/icons, and upload to App Store
+Connect / Google Play are **deferred to a separate later change** (release
+engineering, not part of this milestone's gate).
 
 > **Status:** the offline app is achieved this milestone — iOS is cross-compiled
 > and the four-screen flow runs on-device, fully offline. Store signing,

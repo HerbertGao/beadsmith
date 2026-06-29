@@ -27,7 +27,8 @@ class HomePage extends ConsumerWidget {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (file == null) return;
     final bytes = await file.readAsBytes();
+    if (!context.mounted) return;
     ref.read(pickedImageProvider.notifier).set(bytes);
-    if (context.mounted) context.push('/crop');
+    context.push('/crop');
   }
 }

@@ -7,6 +7,11 @@
 //
 // It does NOT compare bytes against bead-cli — iOS libm != host libm, so only
 // the structural invariants are asserted (design risk §"跨目标浮点", Rule 3).
+//
+// iOS-only: this is a native-linkage proof; on other targets (e.g. Android,
+// whose path is unverified this milestone) it would fail for the wrong reason.
+@TestOn('ios')
+library;
 
 import 'package:beadsmith/infrastructure/bead_ffi_loader.dart';
 import 'package:beadsmith/infrastructure/pattern_engine.dart';
