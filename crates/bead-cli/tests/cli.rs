@@ -184,6 +184,87 @@ fn cli_generate_and_palette_subcommands() {
     let _ = fs::remove_dir_all(&work);
 }
 
+/// 4.3 — `--max-colors N` limits the output bead color count to ≤ N (exit 0,
+/// four non-empty files, summary color lines ≤ N); `--max-colors 0` exits
+/// non-zero (1, not panic=101) with a contextual stderr message. Same fixture
+/// pattern as the e2e test above; no new deps, no JSON parsing.
+#[test]
+fn cli_max_colors_ok_and_zero_rejected() {
+    let work = scratch("cli-mc");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    // --- --max-colors 8: exit 0, four non-empty files, color count ≤ 8 -------
+    let out = work.join("mc8");
+    let ok = Command::new(BIN)
+        .args(["generate", "--input"])
+        .arg(&input)
+        .arg("--palette")
+        .arg(&good_palette)
+        .args(["--width", "16", "--height", "20", "--output"])
+        .arg(&out)
+        .args(["--max-colors", "8"])
+        .output()
+        .expect("run generate --max-colors 8");
+    assert!(
+        ok.status.success(),
+        "generate --max-colors 8 must exit 0; stderr: {}",
+        String::from_utf8_lossy(&ok.stderr)
+    );
+
+    let preview = out.join("preview.png");
+    let grid = out.join("grid.png");
+    let pattern = out.join("pattern.json");
+    let summary = out.join("summary.txt");
+    for f in [&preview, &grid, &pattern, &summary] {
+        let meta = fs::metadata(f).unwrap_or_else(|e| panic!("missing {f:?}: {e}"));
+        assert!(meta.len() > 0, "{f:?} must be non-empty");
+    }
+
+    // summary.txt: 5 header lines (Bead Pattern Summary / Size / Total Beads /
+    // Palette / blank) then one line per used color -> color count = lines - 5.
+    let summary_text = fs::read_to_string(&summary).expect("read summary.txt");
+    assert_eq!(
+        summary_text.lines().next(),
+        Some("Bead Pattern Summary"),
+        "summary.txt first line must be 'Bead Pattern Summary'"
+    );
+    let color_count = summary_text.lines().count().saturating_sub(5);
+    assert!(
+        color_count <= 8,
+        "summarized color count ({color_count}) must be ≤ --max-colors 8; summary:\n{summary_text}"
+    );
+
+    // --- --max-colors 0: rejected, non-zero exit (1), contextual stderr, no panic
+    let bad = Command::new(BIN)
+        .args(["generate", "--input"])
+        .arg(&input)
+        .arg("--palette")
+        .arg(&good_palette)
+        .args(["--width", "16", "--height", "20", "--output"])
+        .arg(work.join("zero"))
+        .args(["--max-colors", "0"])
+        .output()
+        .expect("run generate --max-colors 0");
+    assert!(
+        !bad.status.success(),
+        "generate --max-colors 0 must exit non-zero (got success)"
+    );
+    assert_eq!(
+        bad.status.code(),
+        Some(1),
+        "generate --max-colors 0 must exit 1 (not panic=101 / signal=None); got {:?}",
+        bad.status.code()
+    );
+    let bad_stderr = String::from_utf8_lossy(&bad.stderr);
+    assert!(
+        bad_stderr.contains("max_colors"),
+        "generate --max-colors 0 stderr must surface the error context (\"max_colors\"); got: {bad_stderr:?}"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
 /// 6.8 — filesystem failures exit non-zero (never panic) with path context.
 /// Two representative cases (write-side: --output is an existing plain file;
 /// read-side: --input does not exist); parent-not-writable / disk-full share

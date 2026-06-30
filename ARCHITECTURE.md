@@ -140,7 +140,7 @@ pub fn validate_palette(...)
 Responsible for reducing colors.
 
 - **Phase 1:** not enabled
-- **Phase 2:** Median Cut, K-Means
+- **Phase 2:** Median Cut (`MedianCutQuantizer`) — implemented as the default; K-Means (future)
 
 ```rust
 pub trait Quantizer {

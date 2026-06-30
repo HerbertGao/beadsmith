@@ -38,6 +38,9 @@ enum Command {
         /// Output directory (created if missing; files are overwritten).
         #[arg(long)]
         output: PathBuf,
+        /// Limit the pattern to at most N bead colors (e.g. 24/36/48/72).
+        #[arg(long)]
+        max_colors: Option<u32>,
     },
     /// Palette subcommands.
     Palette {
@@ -71,7 +74,8 @@ fn main() -> Result<()> {
             width,
             height,
             output,
-        } => generate(&input, &palette, width, height, &output),
+            max_colors,
+        } => generate(&input, &palette, width, height, &output, max_colors),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
             // ponytail: 桩成显式非零退出，不假绿、不 panic
@@ -86,7 +90,14 @@ fn main() -> Result<()> {
     }
 }
 
-fn generate(input: &Path, palette: &Path, width: u32, height: u32, output: &Path) -> Result<()> {
+fn generate(
+    input: &Path,
+    palette: &Path,
+    width: u32,
+    height: u32,
+    output: &Path,
+    max_colors: Option<u32>,
+) -> Result<()> {
     let img_bytes =
         fs::read(input).with_context(|| format!("failed to read input image {input:?}"))?;
     let pal_bytes =
@@ -97,6 +108,7 @@ fn generate(input: &Path, palette: &Path, width: u32, height: u32, output: &Path
     let opts = GenerateOptions {
         width,
         height,
+        max_colors,
         ..Default::default()
     };
     let result =

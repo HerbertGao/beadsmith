@@ -8,6 +8,7 @@ pub mod matcher;
 pub mod models;
 pub mod palette;
 pub mod pipeline;
+pub mod quantizer;
 pub mod renderer;
 pub mod statistics;
 
@@ -16,6 +17,7 @@ pub use matcher::{match_pattern, ColorMatcher, RgbMatcher};
 pub use models::{BeadPattern, ColorStat, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
 pub use pipeline::{generate_pattern, GenerateOptions, GenerateResult};
+pub use quantizer::{MedianCutQuantizer, Quantizer};
 pub use renderer::{render_grid, render_preview, BeadShape, RenderOptions};
 pub use statistics::{count_colors, generate_summary, total_beads};
 
@@ -45,9 +47,9 @@ pub enum BeadError {
     ImageDecode(#[from] ::image::ImageError),
 
     /// Image decoded but a requested operation is semantically invalid
-    /// (zero target dimension, zero-dimension source, or a crop that floors
-    /// to a zero dimension). `reason` is deterministic and names the
-    /// offending dimension.
+    /// (zero target dimension, zero-dimension source, a crop that floors to a
+    /// zero dimension, or `max_colors == 0` passed to a quantizer). `reason`
+    /// is deterministic and names the offending value.
     #[error("invalid image: {reason}")]
     InvalidImage { reason: String },
 
