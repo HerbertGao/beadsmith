@@ -21,7 +21,7 @@
 ## 决策
 
 **D1 — `Quantizer` trait：grid→grid 降色，构造期吃 max_colors。**
-```
+```rust
 pub trait Quantizer { fn quantize(&self, grid: &PixelGrid) -> PixelGrid; }
 pub struct MedianCutQuantizer { /* max_colors 等配置 */ }
 impl MedianCutQuantizer { pub fn new(max_colors: u32) -> Result<Self, BeadError>; }

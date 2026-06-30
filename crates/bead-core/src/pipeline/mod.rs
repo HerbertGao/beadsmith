@@ -580,10 +580,23 @@ mod tests {
     #[test]
     fn max_colors_bounds_distinct_stats() {
         let palette = demo_palette();
-        // 4 hues spaced out so the gradient yields several distinct colors pre-
-        // reduction; n=2 is well below the distinct count.
-        let (w, h) = (8u32, 8u32);
-        let bytes = demo_png(16, 16);
+        // Use a grid that is visibly richer than the reduction bound so the
+        // test proves the quantizer path is actually exercised.
+        let (w, h) = (12u32, 12u32);
+        let img = ::image::RgbImage::from_fn(w, h, |x, y| {
+            let px = match (x < w / 2, y < h / 2) {
+                (true, true) => [255, 0, 0],
+                (false, true) => [0, 255, 0],
+                (true, false) => [0, 0, 255],
+                (false, false) => [255, 255, 255],
+            };
+            ::image::Rgb(px)
+        });
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut cursor, ::image::ImageFormat::Png)
+            .expect("encoding the test PNG must succeed");
+        let bytes = cursor.into_inner();
         let n = 2u32;
         let opts = GenerateOptions {
             width: w,
@@ -591,7 +604,41 @@ mod tests {
             max_colors: Some(n),
             ..Default::default()
         };
+        let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
+        let raw_distinct = {
+            let mut pixels = grid.pixels.clone();
+            pixels.sort_unstable();
+            pixels.dedup();
+            pixels.len()
+        };
+        assert!(
+            raw_distinct > n as usize,
+            "fixture must exceed max_colors before quantization, got {raw_distinct}"
+        );
+
+        let quantizer = MedianCutQuantizer::new(n).expect("valid quantizer");
+        let quantized_grid = quantizer.quantize(&grid);
+        let quantized_distinct = {
+            let mut pixels = quantized_grid.pixels.clone();
+            pixels.sort_unstable();
+            pixels.dedup();
+            pixels.len()
+        };
+        assert!(
+            quantized_distinct <= n as usize,
+            "quantized grid must be reduced to <= {n} colors, got {quantized_distinct}"
+        );
+
+        let matcher = LabMatcher::new(&palette).expect("matcher");
+        let expected = match_pattern(&quantized_grid, &matcher);
+        let baseline = match_pattern(&grid, &matcher);
+        assert_ne!(
+            expected, baseline,
+            "fixture must make the reduction stage observable"
+        );
+
         let result = generate_pattern(&bytes, &palette, &opts).expect("quantized run succeeds");
+        assert_eq!(result.pattern, expected);
         assert!(
             result.stats.len() <= n as usize,
             "stats.len() ({}) must be <= max_colors ({n})",
