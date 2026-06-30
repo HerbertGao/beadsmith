@@ -10,7 +10,8 @@
 //!
 //! Cross-platform posture (design D1): byte golden is asserted **only on the
 //! canonical platform (arm64 Linux; CI reference ubuntu-24.04-arm)** because the
-//! default `Lanczos3` resize weights go through `f32::sin`, whose ULP is not
+//! default `Lanczos3` resize weights go through `f32::sin` and the default
+//! `LabMatcher` (CIELAB + ΔE76) goes through `cbrt`/`powf`, whose ULP is not
 //! guaranteed identical across architectures / libm implementations. The other
 //! platforms (x86-64 Linux, macOS, Windows) run the same tests but only assert
 //! float-independent structural invariants (`golden_structure_*`).

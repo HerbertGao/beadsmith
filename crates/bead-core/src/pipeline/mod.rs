@@ -16,7 +16,7 @@
 //! `String`. Persisting any of it is the frontend's job.
 
 use crate::image::{image_to_grid, ResizeOptions};
-use crate::matcher::{match_pattern, RgbMatcher};
+use crate::matcher::{match_pattern, LabMatcher};
 use crate::models::{BeadPattern, ColorStat};
 use crate::palette::Palette;
 use crate::renderer::{render_grid, render_preview, RenderOptions};
@@ -81,7 +81,7 @@ pub fn generate_pattern(
     opts: &GenerateOptions,
 ) -> Result<GenerateResult, BeadError> {
     let grid = image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)?;
-    let m = RgbMatcher::new(palette)?;
+    let m = LabMatcher::new(palette)?;
     let pattern = match_pattern(&grid, &m);
     let stats = count_colors(&pattern, palette);
     let summary = generate_summary(&pattern, palette);
@@ -220,7 +220,7 @@ mod tests {
         // Re-run each primitive individually and compare one-for-one — proving the
         // pipeline introduces no difference.
         let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
-        let m = RgbMatcher::new(&palette).expect("matcher");
+        let m = LabMatcher::new(&palette).expect("matcher");
         let expected_pattern = match_pattern(&grid, &m);
         let expected_stats = count_colors(&expected_pattern, &palette);
         let expected_summary = generate_summary(&expected_pattern, &palette);
@@ -455,7 +455,7 @@ mod tests {
             other => panic!("expected InvalidImage, got {other:?}"),
         }
 
-        // ③ invalid palette (empty colors) -> InvalidPalette via RgbMatcher::new.
+        // ③ invalid palette (empty colors) -> InvalidPalette via LabMatcher::new.
         let empty_palette = Palette {
             brand: "Empty".to_string(),
             colors: vec![],
