@@ -36,6 +36,6 @@
 
 - [x] 6.1 `ARCHITECTURE.md` Rule 3（约 :73-80，CLAUDE.md 硬规则）：把「Pure-integer paths (matcher, …) are bit-identical across architectures」中的 matcher **限定为 RgbMatcher**；默认 `LabMatcher` 归浮点列（与 Lanczos3 同：跨架构非位精确、canonical-arm64 字节 golden + 同机 CLI==FFI）。`flutter-ffi` 规范 `:172` 引用此条，一并核对。
 - [x] 6.2 `ARCHITECTURE.md:156-157` matcher 模块 Phase 标号：「Phase 2: CIELAB」与 INIT「算法 Phase」轴冲突（INIT Phase 2 = Color Reduction/降色，是 quantizer 非 matcher；CIELAB+ΔE = Phase 3）→ 改为「Phase 3」并标注「已实现为默认」。与 §1.4 的 matcher 头注一致。
-- [ ] 6.3 主规范 **目的** 段（归档/sync 时改写，delta 的需求块不覆盖目的）：`color-matching` 目的「逐格用 RGB 平方欧氏距离…纯整数…跨架构位精确」改为两档（RgbMatcher 整数跨架构基准；默认 LabMatcher f32/canonical-arm64）；`pipeline` 目的「默认 Lanczos3 f32 重采样非跨架构 byte 稳」补「+ LabMatcher」为第二浮点源。
+- [x] 6.3 主规范 **目的** 段（归档/sync 时改写，delta 的需求块不覆盖目的）：`color-matching` 目的「逐格用 RGB 平方欧氏距离…纯整数…跨架构位精确」改为两档（RgbMatcher 整数跨架构基准；默认 LabMatcher f32/canonical-arm64）；`pipeline` 目的「默认 Lanczos3 f32 重采样非跨架构 byte 稳」补「+ LabMatcher」为第二浮点源。（本次归档改写。）
 - [x] 6.4 `tests/golden/README.md:3`「freeze the Phase-1 engine's output」改为「当前默认引擎（Lanczos3 + LabMatcher）输出」；`:44-48` 浮点源理由（「Lanczos3 … f32::sin」一句起于 :45）补 LabMatcher。
 - [x] 6.5 仅理由文案、**无行为 delta**（normative 需求/场景不变，RC 已 diff 确认）：`golden-tests` 规范 `:4,28`、`flutter-ffi` 同机证明文本、`crates/bead-cli/tests/golden.rs:11-16` 注释、`INIT.md:287-288`（「since the default Lanczos3 resize runs f32::sin」）——凡把 Lanczos3 列为「唯一浮点源 / canonical 唯一理由」处补「+ LabMatcher（`cbrt`/`powf`）」。

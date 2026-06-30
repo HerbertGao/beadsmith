@@ -7,21 +7,20 @@
 `brand` + 两张 PNG 字节），使 CLI 与 FFI 消费**同一个**结果对象、不可能静默分歧（「CLI == FFI」的结构前提）。并定义 `pattern.json`
 的序列化形状——由 `pattern_json(&GenerateResult) -> String`（纯数据、不可失败）产出。管线**不含算法**、**不新增 `BeadError` 变体**
 （透传各阶段既有错误）、**不碰文件系统**（`image_bytes`/`&Palette` 由调用方读入）；确定性以「同平台 + 同依赖版本」为界（默认
-`Lanczos3` f32 重采样非跨架构 byte 稳，跨架构 golden 归 M7）。
-
+链含两个浮点源——`Lanczos3` f32 重采样 + 默认 `LabMatcher` 的 `cbrt`/`powf`——均非跨架构 byte 稳，canonical=arm64-Linux 字节 golden + 同机 CLI==FFI 兜底）。
 ## 需求
 ### 需求:generate_pattern 是唯一的生成/编排入口并忠实串联各原语
-`pipeline::generate_pattern` 必须是 `bead-core` 面向外部调用方（CLI、未来 FFI）的**唯一完整生成/编排入口**：外部**禁止**绕过它、在管线外**自行拼装
+`pipeline::generate_pattern` 必须是 `bead-core` 面向外部调用方（CLI、未来 FFI）的**唯一完整生成/编排入口**：外部**禁止**绕过它、在管线外**自行拼装**
 `image_to_grid → match_pattern → count_colors/generate_summary → render_*` 来重做生成。这**不**意味着 `bead-core` 只暴露这一个公开函数——**输入解析**
 `load_palette`（调用方用它读出 `&Palette` 再传入）与**输出序列化** `pattern_json` 是**允许的公开 helper**；现有原语（`image_to_grid`/`match_pattern`/`render_*`
 等）是**库/复用原语、非生成入口**。约束的是「不在外部重做编排」，而非「只许一个 `pub fn`」。`generate_pattern` 必须接受
 `(image_bytes: &[u8], palette: &Palette, opts: &GenerateOptions)`，返回 `Result<GenerateResult, BeadError>`，并**只是忠实串联**既有原语、**不引入新算法**：
-`image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)` → `RgbMatcher::new(palette)` → `match_pattern` → `count_colors`/`total_beads`/
-`generate_summary` → `render_preview`/`render_grid`。`bead-core` **禁止**读写文件系统：`image_bytes` 与 `&Palette` 必须由调用方读入。
+`image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)` → `LabMatcher::new(palette)` → `match_pattern` → `count_colors`/`total_beads`/
+`generate_summary` → `render_preview`/`render_grid`。其中 `LabMatcher`（实现 `ColorMatcher` trait，CIELAB + ΔE76）是引擎的**默认且唯一**内部匹配器（算法 Phase 3）——管线**不**暴露匹配器选择项（`GenerateOptions` 无 matcher 字段），切换匹配器属未来变更。`bead-core` **禁止**读写文件系统：`image_bytes` 与 `&Palette` 必须由调用方读入。
 
 #### 场景:generate_pattern 的结果与单独调用各原语逐一相等
 - **当** 对 `(image_bytes, palette, opts)` 调用 `generate_pattern`
-- **那么** 返回的 `GenerateResult` 的 `pattern`/`stats`/`summary`/`preview_png`/`grid_png` 分别等于：对同输入依次调用 `image_to_grid`+`match_pattern`、
+- **那么** 返回的 `GenerateResult` 的 `pattern`/`stats`/`summary`/`preview_png`/`grid_png` 分别等于：对同输入依次调用 `image_to_grid`+`match_pattern`（用 `LabMatcher::new(palette)`）、
   `count_colors`、`generate_summary`、`render_preview`、`render_grid` 各自的结果（pipeline 未引入任何差异），且 `brand == palette.brand`（`brand` 无对应原语、
   就是入参 palette 的 brand 克隆）、`pattern.width==opts.width`、`pattern.height==opts.height`、`pattern.cells.len()==opts.width*opts.height`
 
@@ -45,7 +44,7 @@
 - **那么** `resize` 等于 `ResizeOptions::default()`、`render` 等于 `RenderOptions::default()`（`cell_size==10`），而 `width/height` 为调用方所设
 
 ### 需求:单一 Palette 不变量（matcher、统计、渲染同喂一份调色板）
-`generate_pattern` 必须把**入参的同一份 `palette` 引用**喂给内部的 `RgbMatcher::new`、`count_colors`/`generate_summary` 与 `render_preview`/
+`generate_pattern` 必须把**入参的同一份 `palette` 引用**喂给内部的 `LabMatcher::new`、`count_colors`/`generate_summary` 与 `render_preview`/
 `render_grid`。调用方**无法**提供多份不同调色板——签名只有一个 `&Palette`。因此 matcher 的 `index→color`、统计的 `index→{code,name}`、渲染的
 `index→rgb` 必然锚到同一份调色板，「传错/不一致调色板」在管线内**结构性不可能**（这是 M4/M5 推迟到 pipeline 落地的不变量）。
 
@@ -70,13 +69,13 @@ pipeline 必须能把结果序列化为一个**完整报告**性质的 `pattern.
 - **当** 用 `pattern_json(&result)` 序列化为 `pattern.json`
 - **那么** 返回的 `String` 解析后**含键** `brand`、`width`、`height`、`cells`（整数数组）、`total`、`stats`（每项含 `code`/`name`/`count`），且
   `total == cells.len() == width*height`，且各 `stats[i].count` 之和等于 `total`（对 pipeline 产出的结果**恒成立**——`total_beads == cells.len()`，而
-  `cells` 由 `match_pattern` 在 `RgbMatcher::new(palette)` 对**该 palette 的快照**上产出、每个下标**必 `< palette.colors.len()`**，故 `count_colors` 用**同一份**
-  palette 计数时无一越界被跳过 → `Σ count == total`。**定理锚在 matcher 的下标值域**（不是泛泛的「单一 Palette」）；对**外部手搓**的 `BeadPattern`（含越界下标）
+  `cells` 由 `match_pattern` 在 `LabMatcher::new(palette)` 对**该 palette 的快照**上产出、每个下标**必 `< palette.colors.len()`**，故 `count_colors` 用**同一份**
+  palette 计数时无一越界被跳过 → `Σ count == total`。**定理锚在 matcher 的下标值域**（不是泛泛的「单一 Palette」，对任何 `ColorMatcher` 实现的同序快照均成立）；对**外部手搓**的 `BeadPattern`（含越界下标）
   `count_colors` 会跳过越界项、`Σ count < total`，正是 statistics-D4 的「传错调色板」可观测信号）
 
 ### 需求:管线错误透传，不新增 BeadError 变体
-`generate_pattern` 必须把内部各阶段的 `BeadError` 经 `?` 透传：`image_to_grid` 的 `ImageDecode`（坏图字节）/`InvalidImage`（零维度）、`RgbMatcher::new`
-的 `InvalidPalette`（空 / 超 65536 色）、`render_*` 的 `InvalidImage`（**不止零维度——还含输出缓冲过大** `out_*>u32::MAX` 或 `bytes>isize::MAX`，见 renderer 规范）
+`generate_pattern` 必须把内部各阶段的 `BeadError` 经 `?` 透传：`image_to_grid` 的 `ImageDecode`（坏图字节）/`InvalidImage`（零维度）、`LabMatcher::new`
+的 `InvalidPalette`（空 / 超 65536 色，与 `RgbMatcher::new` 同守卫）、`render_*` 的 `InvalidImage`（**不止零维度——还含输出缓冲过大** `out_*>u32::MAX` 或 `bytes>isize::MAX`，见 renderer 规范）
 /`ImageEncode`。**禁止**为管线新增 `BeadError` 变体（管线无新失败语义；`match_pattern`/`count_colors`/`total_beads`/`generate_summary` 是全函数、不失败）。
 空网格（`width==0`/`height==0`）必须由 `image_to_grid` 的零维守卫返回 `Err(InvalidImage)`、**不 panic**、且**先于配色/渲染失败**（故 render 与 stats 的空网格
 分歧在管线不可达）。病态巨大的 `width`/`height` 可能在 `render_*` 的过大缓冲守卫返 `Err(InvalidImage)`（透传、不 panic），或在更早的 resize 处 OOM-abort
@@ -89,11 +88,11 @@ pipeline 必须能把结果序列化为一个**完整报告**性质的 `pattern.
 
 ### 需求:管线确定性（可复现，范围 = 同平台 + 同依赖版本）
 同一 `(image_bytes, palette, GenerateOptions)` 必须产生**可复现**的 `GenerateResult`：在**同平台 + 同依赖版本**下 `pattern`/`stats`/`summary`/`brand` 逐字段相等、
-两张 PNG 字节逐字节相等。实现**禁止**引入非确定性来源（随机、`rayon` 并行、`HashMap`/`HashSet` 迭代顺序泄漏）。**跨架构范围（不可过度声称）**：M6 默认
-`Lanczos3`（f32 重采样）的输出**未保证跨架构 byte 一致**（M2 的 determinism 测试为此**刻意只用 `Nearest` 作跨架构 golden**、不钉 Lanczos3 f32 输出）；`cells` 及其
-下游 `stats`/`summary`/`pattern.json`/两张 PNG **全部源自这次 resize**，故端到端逐字节一致**以「同平台 + 同依赖版本」为界**——resize **之后**的链（match→stats→
-summary→render→编码）是纯整数、跨架构稳，唯一跨架构不稳的环节是 resize 本身。这对 M7 golden（固定平台冻结 / demo 改 `Nearest`）与 M8「CLI==FFI」（同机同设备）
-**已足**；跨架构 golden 策略归 M7（钉平台 / 改 `Nearest` / 加跨架构校验门）。
+两张 PNG 字节逐字节相等。实现**禁止**引入非确定性来源（随机、`rayon` 并行、`HashMap`/`HashSet` 迭代顺序泄漏）。**跨架构范围（不可过度声称）**：默认链含**两个**
+浮点 / 非跨架构-byte-稳的环节——① `image_to_grid` 默认 `Lanczos3`（f32 重采样），② 默认匹配器 `LabMatcher`（CIELAB + ΔE76，`f32` 的 `cbrt`/`powf`）。二者跨架构（arm64 / x86_64）
+**均不保证 byte 一致**；`cells` 及其下游 `stats`/`summary`/`pattern.json`/两张 PNG **全部源自这两步**，故端到端逐字节一致**以「同平台 + 同依赖版本」为界**——resize 与 match
+**之后**的链（stats→summary→render→编码）是纯整数、跨架构稳，跨架构不稳的环节是 resize 与 match 本身。这对 M7 golden（canonical = arm64 Linux 字节冻结 / 非 canonical 平台只断结构不变量）
+与 M8「CLI==FFI」（**同机同设备** → 同 libm → 同结果）**已足**；跨架构 byte 一致**非**保证项，由 canonical arm64 golden 承担（golden-tests 规范）。
 
 #### 场景:同输入重复生成结果相等
 - **当** 对同一 `(image_bytes, palette, opts)` 多次调用 `generate_pattern`
