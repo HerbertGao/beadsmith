@@ -5,11 +5,11 @@ edition.workspace = true
 license.workspace = true
 
 [lib]
-# Host builds the two crate types we actually verify this milestone:
-# cdylib (loaded by the pure-Dart package via dart:ffi) and lib (so the
-# in-crate #[test]s and FRB codegen can use the API). staticlib is M9
-# (real-device archive linkage) — not built or verified here (YAGNI).
-crate-type = ["cdylib", "lib"]
+# Three crate types: cdylib (loaded by the pure-Dart package via dart:ffi on
+# host), lib (so the in-crate #[test]s and FRB codegen can use the API), and
+# staticlib (M9: archived into the iOS Runner and resolved via
+# ExternalLibrary.process). Packaging dimension only — no bridge logic change.
+crate-type = ["cdylib", "lib", "staticlib"]
 
 [lints.rust]
 # The `#[frb(...)]` macro emits an internal `#[cfg(frb_expand)]` (set only by

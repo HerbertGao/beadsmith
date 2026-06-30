@@ -1,0 +1,16 @@
+// Link the bead-ffi Rust staticlib into the Runner (tasks.md §3.1, design D3).
+//
+// The FFI symbols are reached ONLY at runtime via ExternalLibrary.process()
+// (lib/infrastructure/bead_ffi_loader.dart), so the linker has no compile-time
+// reference and would dead-strip them — `process()` would then fail at runtime.
+// `-force_load` keeps the whole archive so every symbol survives.
+//
+// SDK/arch-conditional: a simulator build (arm64 on Apple Silicon) MUST link the
+// *-sim triple, a device build the iphoneos triple — linking the wrong arch is a
+// hard link error. The three .a are produced by
+// crates/bead-ffi/scripts/build-ios.sh. SRCROOT is apps/mobile/ios, so
+// $(SRCROOT)/../../.. is the repo root.
+
+OTHER_LDFLAGS[sdk=iphonesimulator*][arch=arm64] = $(inherited) -force_load $(SRCROOT)/../../../target/aarch64-apple-ios-sim/release/libbead_ffi.a
+OTHER_LDFLAGS[sdk=iphonesimulator*][arch=x86_64] = $(inherited) -force_load $(SRCROOT)/../../../target/x86_64-apple-ios/release/libbead_ffi.a
+OTHER_LDFLAGS[sdk=iphoneos*] = $(inherited) -force_load $(SRCROOT)/../../../target/aarch64-apple-ios/release/libbead_ffi.a
