@@ -1,12 +1,20 @@
-//! Color matching: map raw RGB cells to palette indices. Pure integer math —
-//! no `f32`, no `sqrt`, no `rayon`. This is the single hand-off from
-//! `PixelGrid` (raw RGB) to `BeadPattern` (palette indices); see design D5/D6.
+//! Color matching: map raw RGB cells to palette indices. This is the single
+//! hand-off from `PixelGrid` (raw RGB) to `BeadPattern` (palette indices); see
+//! design D5/D6.
 //!
-//! The [`ColorMatcher`] trait is the seam for future matchers (Phase 2's
-//! CIELAB/ΔE matcher is the known second implementation); [`RgbMatcher`] is the
-//! Phase 1 RGB squared-Euclidean implementation. `ColorMatcher` must stay
-//! object-safe (D2): it is used as `&dyn ColorMatcher` here and `Box<dyn>` in
-//! the M6 pipeline.
+//! **Invariants split by matcher** (design risk note / §1.4): **no `sqrt`** and
+//! **no `rayon`** hold for *all* matchers — nearest-color comparison always
+//! compares squared distance (`√` is monotonic, so it preserves the argmin).
+//! **`no f32`** is specific to [`RgbMatcher`] (pure integer, bit-identical
+//! across architectures); [`LabMatcher`] deliberately introduces `f32` for its
+//! CIELAB/ΔE76 distance, so it is byte-stable only **same-machine** (canonical
+//! arm64 golden + same-machine CLI==FFI, like `Lanczos3`'s `f32::sin`).
+//!
+//! The [`ColorMatcher`] trait is the seam between matchers: [`RgbMatcher`] is
+//! the algorithm-Phase-1 RGB squared-Euclidean implementation; [`LabMatcher`]
+//! is the algorithm-Phase-3 CIELAB/ΔE76 implementation and the pipeline
+//! default. `ColorMatcher` must stay object-safe (D2): it is used as
+//! `&dyn ColorMatcher` here and `Box<dyn>` in the M6 pipeline.
 
 use crate::models::{BeadPattern, PixelGrid};
 use crate::palette::Palette;
@@ -84,6 +92,124 @@ impl ColorMatcher for RgbMatcher {
             // Strict `<` only: equal distances do NOT update, so the lowest
             // index wins on a tie (and on duplicate-RGB exact hits). This is a
             // determinism gate (CLAUDE rule 2 / design D3.3).
+            if d < best_d {
+                best_d = d;
+                best_i = i;
+            }
+        }
+        best_i as u16
+    }
+}
+
+/// Convert an sRGB `[u8; 3]` to CIELAB `[L*, a*, b*]` (`f32`), D65 white point.
+///
+/// Standard pipeline (design D5): each channel `/255` → inverse-sRGB-gamma
+/// linearization → XYZ via the sRGB/D65 matrix → L\*a\*b\* with the `6/29`
+/// threshold piecewise + `cbrt`. Uses plain IEEE `f32` ops only — **no
+/// `mul_add` / FMA** (a fused multiply-add could codegen-diverge between the CLI
+/// binary and the FFI staticlib/cdylib and break same-machine byte equality,
+/// T4). For any `[u8; 3]` every step is finite, so the result never has a NaN.
+fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
+    // 1) channel /255 then inverse-gamma linearize into linear-light sRGB.
+    let lin = |c: u8| -> f32 {
+        let c = c as f32 / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let r = lin(rgb[0]);
+    let g = lin(rgb[1]);
+    let b = lin(rgb[2]);
+
+    // 2) linear sRGB -> XYZ via the sRGB / D65 matrix. Plain `*` and `+` (no
+    //    mul_add): the column sums are exactly the D65 white below, so white
+    //    maps to x=y=z=1.
+    let x = 0.412_456_4 * r + 0.357_576_1 * g + 0.180_437_5 * b;
+    let y = 0.212_672_9 * r + 0.715_152_2 * g + 0.072_175_0 * b;
+    let z = 0.019_333_9 * r + 0.119_192 * g + 0.950_304_1 * b;
+
+    // 3) normalize by the D65 reference white, then apply f(t) with the 6/29
+    //    threshold; below delta^3 the linear segment keeps f(t) finite at t->0.
+    let f = |t: f32| -> f32 {
+        const DELTA: f32 = 6.0 / 29.0;
+        if t > DELTA * DELTA * DELTA {
+            t.cbrt()
+        } else {
+            t / (3.0 * DELTA * DELTA) + 4.0 / 29.0
+        }
+    };
+    let fx = f(x / 0.950_47); // Xn (D65) == matrix X column sum
+    let fy = f(y); //            Yn == 1.0
+    let fz = f(z / 1.088_83); // Zn (D65) == matrix Z column sum
+
+    // 4) L*a*b*.
+    let l = 116.0 * fy - 16.0;
+    let a = 500.0 * (fx - fy);
+    let bb = 200.0 * (fy - fz);
+    [l, a, bb]
+}
+
+/// Phase 3 matcher: CIELAB + ΔE76 (perceptual distance), lowest index on a tie.
+///
+/// Mirrors [`RgbMatcher`]'s structure (design D4): an order-preserving snapshot
+/// taken at construction — `colors[i]` ≡ `srgb_to_lab(palette.colors[i].rgb)`,
+/// carrying the lowest-index tie rule — with the same value semantics (mutating
+/// the source `Palette` after `new` does not affect the matcher). Unlike
+/// `RgbMatcher` it stores `f32` Lab, so its results are **not** bit-identical
+/// across architectures (`cbrt`/`powf` differ per libm; design D6) — only
+/// same-machine deterministic.
+#[derive(Debug)]
+pub struct LabMatcher {
+    /// Order-preserving Lab snapshot; `colors[i]` ≡ `srgb_to_lab(palette.colors[i].rgb)`.
+    colors: Vec<[f32; 3]>,
+}
+
+impl LabMatcher {
+    /// Build a matcher from a one-time, order-preserving Lab snapshot.
+    ///
+    /// Reuses [`RgbMatcher::new`]'s two guards verbatim (same `InvalidPalette`
+    /// reason strings, no new `BeadError` variant): empty `colors` →
+    /// `InvalidPalette` (`reason` contains "no colors"); `colors.len() > 65536`
+    /// → `InvalidPalette` (`reason` contains "more than"). The boundary is
+    /// exact: `len == 65536` is accepted (indices `0..=65535` fit in `u16`),
+    /// `65537` is the first rejected length. Never panics.
+    pub fn new(palette: &Palette) -> Result<LabMatcher, BeadError> {
+        if palette.colors.is_empty() {
+            return Err(BeadError::InvalidPalette {
+                reason: "matcher: palette has no colors".to_string(),
+            });
+        }
+        if palette.colors.len() > 65536 {
+            return Err(BeadError::InvalidPalette {
+                reason: "matcher: palette has more than 65536 colors".to_string(),
+            });
+        }
+
+        // One-time sRGB->Lab conversion, amortized over all pixels (design D4).
+        let colors: Vec<[f32; 3]> = palette.colors.iter().map(|c| srgb_to_lab(c.rgb)).collect();
+        Ok(LabMatcher { colors })
+    }
+}
+
+impl ColorMatcher for LabMatcher {
+    fn find_best_match(&self, target: [u8; 3]) -> u16 {
+        // Same search skeleton as RgbMatcher::find_best_match, but in Lab: scan
+        // linearly, compare the SUM OF SQUARED Lab component differences
+        // (= ΔE76² — `√` is monotonic so squared distance preserves the argmin;
+        // design D1), strict `<` update so the lowest index wins on a tie. Plain
+        // f32 ops, no mul_add/FMA (T4). `new` guarantees a non-empty snapshot of
+        // <= 65536 colors, so `best_i` is always set and fits in u16 — a total
+        // function: no `Result`, no panic, and finite Lab in -> no NaN out (D5).
+        let t = srgb_to_lab(target);
+        let mut best_i: usize = 0;
+        let mut best_d: f32 = f32::INFINITY;
+        for (i, c) in self.colors.iter().enumerate() {
+            let dl = t[0] - c[0];
+            let da = t[1] - c[1];
+            let db = t[2] - c[2];
+            let d = dl * dl + da * da + db * db;
             if d < best_d {
                 best_d = d;
                 best_i = i;
@@ -386,5 +512,165 @@ mod tests {
         assert_eq!(matcher.find_best_match([0, 0, 0]), 0);
         assert_eq!(matcher.find_best_match([255, 255, 255]), 0);
         assert_eq!(matcher.find_best_match([123, 45, 67]), 0);
+    }
+
+    // ---- LabMatcher (Phase 3) -------------------------------------------------
+
+    // 2.1 — sRGB->Lab known values: black -> L≈0, white -> L≈100 (both neutral),
+    // and the standard sRGB red reference; all finite (no NaN for u8 input).
+    #[test]
+    fn lab_conversion_known_values() {
+        let black = srgb_to_lab([0, 0, 0]);
+        assert!(
+            black[0].abs() < 0.01,
+            "black L must be ~0, got {}",
+            black[0]
+        );
+        assert!(black[1].abs() < 0.01 && black[2].abs() < 0.01);
+
+        let white = srgb_to_lab([255, 255, 255]);
+        assert!(
+            (white[0] - 100.0).abs() < 0.05,
+            "white L must be ~100, got {}",
+            white[0]
+        );
+        assert!(white[1].abs() < 0.05 && white[2].abs() < 0.05);
+
+        // standard sRGB red [255,0,0] -> Lab ≈ (53.24, 80.09, 67.20).
+        let red = srgb_to_lab([255, 0, 0]);
+        assert!((red[0] - 53.24).abs() < 0.5, "red L: {}", red[0]);
+        assert!((red[1] - 80.09).abs() < 0.5, "red a: {}", red[1]);
+        assert!((red[2] - 67.20).abs() < 0.5, "red b: {}", red[2]);
+
+        // bounded u8 input -> every component finite.
+        for v in black.iter().chain(white.iter()).chain(red.iter()) {
+            assert!(v.is_finite(), "Lab component must be finite, got {v}");
+        }
+    }
+
+    // 2.2 — exact hit maps to distance 0 (same RGB -> same Lab, same machine);
+    // duplicate RGB -> lowest index wins (strict `<`).
+    #[test]
+    fn lab_exact_hit_and_duplicate_rgb_lowest_index() {
+        let palette = palette_from(&[("A", [10, 20, 30]), ("B", [200, 100, 50]), ("C", [0, 0, 0])]);
+        let matcher = LabMatcher::new(&palette).expect("valid palette");
+        assert_eq!(matcher.find_best_match([10, 20, 30]), 0);
+        assert_eq!(matcher.find_best_match([200, 100, 50]), 1);
+        assert_eq!(matcher.find_best_match([0, 0, 0]), 2);
+
+        let dup = palette_from(&[("DUP_A", [42, 42, 42]), ("DUP_B", [42, 42, 42])]);
+        let m2 = LabMatcher::new(&dup).expect("valid palette");
+        assert_eq!(m2.find_best_match([42, 42, 42]), 0);
+    }
+
+    // 2.3 — off-palette maps to the PERCEPTUALLY nearest color, which can differ
+    // from RgbMatcher's pick (proving this is Lab matching, not an RGB alias).
+    #[test]
+    fn lab_off_palette_can_differ_from_rgb() {
+        // index 0 = navy, index 1 = olive. Dark gray [40,40,40] is closer to navy
+        // in RGB squared-Euclidean (d=10944 < 17088 -> index 0) but closer to
+        // olive in Lab ΔE76² (d≈4657.6 < 6452.7 -> index 1): the matchers disagree.
+        let palette = palette_from(&[("NAVY", [0, 0, 128]), ("OLIVE", [128, 128, 0])]);
+        let lab = LabMatcher::new(&palette).expect("valid palette");
+        let rgb = RgbMatcher::new(&palette).expect("valid palette");
+
+        let target = [40u8, 40, 40];
+        let lab_idx = lab.find_best_match(target);
+        let rgb_idx = rgb.find_best_match(target);
+        assert_eq!(rgb_idx, 0, "RgbMatcher picks navy on [40,40,40]");
+        assert_eq!(
+            lab_idx, 1,
+            "LabMatcher picks olive (perceptually nearer) on [40,40,40]"
+        );
+        assert_ne!(
+            lab_idx, rgb_idx,
+            "LabMatcher must differ from RgbMatcher on a perceptual mismatch"
+        );
+    }
+
+    // 2.4 — Lab tie returns the lowest index (two equal-Lab colors via shared
+    // RGB tie at a nonzero distance), plus the construction guards mirror
+    // RgbMatcher exactly (empty / 65537 rejected, 65536 accepted).
+    #[test]
+    fn lab_tie_lowest_index_and_guards() {
+        // TIE_A / TIE_B share RGB -> identical Lab -> identical distance to the
+        // target (which is nearer to them than to FAR). Strict `<` -> index 0.
+        let palette = palette_from(&[
+            ("TIE_A", [100, 150, 200]),
+            ("TIE_B", [100, 150, 200]),
+            ("FAR", [0, 0, 0]),
+        ]);
+        let matcher = LabMatcher::new(&palette).expect("valid palette");
+        assert_eq!(matcher.find_best_match([105, 150, 200]), 0);
+        // repeated calls identical (determinism gate).
+        assert_eq!(matcher.find_best_match([105, 150, 200]), 0);
+
+        // guards: empty palette rejected, reason contains "no colors".
+        let empty = Palette {
+            brand: "Empty".to_string(),
+            colors: vec![],
+        };
+        match LabMatcher::new(&empty) {
+            Err(BeadError::InvalidPalette { reason }) => assert!(
+                reason.contains("no colors"),
+                "reason must mention no colors, got: {reason:?}"
+            ),
+            other => panic!("expected InvalidPalette, got {other:?}"),
+        }
+
+        // boundary: 65537 rejected ("more than"), 65536 accepted.
+        let make = |n: usize| Palette {
+            brand: "Big".to_string(),
+            colors: (0..n)
+                .map(|i| PaletteColor {
+                    code: i.to_string(),
+                    name: i.to_string(),
+                    rgb: [0, 0, 0],
+                })
+                .collect(),
+        };
+        match LabMatcher::new(&make(65537)) {
+            Err(BeadError::InvalidPalette { reason }) => assert!(
+                reason.contains("more than"),
+                "reason must mention more than, got: {reason:?}"
+            ),
+            other => panic!("expected InvalidPalette, got {other:?}"),
+        }
+        assert!(
+            LabMatcher::new(&make(65536)).is_ok(),
+            "65536 colors must be accepted (u16::MAX == 65535)"
+        );
+    }
+
+    // 2.5 — same-machine determinism: repeated match yields byte-equal cells.
+    #[test]
+    fn lab_match_pattern_deterministic_same_machine() {
+        let palette = palette_from(&[
+            ("BLACK", [0, 0, 0]),
+            ("WHITE", [255, 255, 255]),
+            ("RED", [255, 0, 0]),
+            ("GREEN", [0, 255, 0]),
+            ("BLUE", [0, 0, 255]),
+        ]);
+        let matcher = LabMatcher::new(&palette).expect("valid palette");
+        let grid = PixelGrid {
+            width: 3,
+            height: 2,
+            pixels: vec![
+                [0, 0, 0],
+                [255, 255, 255],
+                [200, 40, 40],
+                [40, 200, 40],
+                [40, 40, 200],
+                [123, 77, 200],
+            ],
+        };
+        let first = match_pattern(&grid, &matcher);
+        let second = match_pattern(&grid, &matcher);
+        assert_eq!(
+            first.cells, second.cells,
+            "same-machine repeated match must be byte-identical"
+        );
+        assert_eq!(first, second);
     }
 }

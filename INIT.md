@@ -284,8 +284,9 @@ grid.png
 Implemented at M7: `grid.png` is also frozen (every byte the CLI writes enters
 the golden set). The byte assertion is canonical-only on **arm64 Linux** (CI
 `ubuntu-24.04-arm`); other platforms assert float-independent structural
-invariants, since the default `Lanczos3` resize runs `f32::sin` whose result is
-not bit-identical across architectures / libm.
+invariants, since the default `Lanczos3` resize runs `f32::sin` and the default
+`LabMatcher` (CIELAB + ΔE76) runs `cbrt`/`powf`, whose results are not
+bit-identical across architectures / libm.
 
 ### Benchmark Tests
 

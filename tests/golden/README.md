@@ -1,7 +1,7 @@
 # tests/golden/
 
-Committed byte golden masters that freeze the Phase-1 engine's output (milestone
-M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
+Committed byte golden masters that freeze the current default engine's output
+(`Lanczos3` resize + `LabMatcher`; milestone M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
 executable CI gate: an intentional algorithm change — or a dependency bump that
 changes output bytes — fails loudly here instead of drifting silently.
 
@@ -41,9 +41,10 @@ test's `BLESS` regeneration path (see `crates/bead-cli/tests/golden.rs`):
 ## Canonical platform: arm64 Linux
 
 The byte masters are valid **only on the canonical platform (arm64 Linux; CI
-reference runner = `ubuntu-24.04-arm`)**. The `Lanczos3` resize path runs
-floating-point math whose cross-platform / cross-architecture bit-for-bit result
-is not guaranteed (the weight kernel goes through `f32::sin`, which is not
+reference runner = `ubuntu-24.04-arm`)**. The `Lanczos3` resize path and the
+default `LabMatcher` (CIELAB + ΔE76) run floating-point math whose cross-platform
+/ cross-architecture bit-for-bit result is not guaranteed (the resize weight
+kernel goes through `f32::sin` and the matcher through `cbrt`/`powf`, neither
 specified to be identical across architectures / libm implementations). arm64 is
 chosen because the engine's production target is mobile arm64 (iOS / Android),
 and Apple Silicon dev machines can bless via a *native* arm64 container (no

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Reject commits with unformatted Rust — mirrors CI `cargo fmt --all -- --check`.
+# Bypass once with `git commit --no-verify`.
+if ! cargo fmt --all -- --check; then
+	echo >&2
+	echo "✗ rustfmt 检查未通过：运行 'cargo fmt --all' 后重新 git add 提交（或 --no-verify 跳过）。" >&2
+	exit 1
+fi

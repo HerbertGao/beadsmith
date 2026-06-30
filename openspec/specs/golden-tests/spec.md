@@ -1,7 +1,7 @@
 # golden-tests 规范
 
 ## 目的
-对一组固定夹具与固定设置，把 `generate_pattern` + `pattern_json` 经库 API 产出的四块产物（`pattern.json` / `summary.txt` / `preview.png` / `grid.png`）冻结成 committed 字节金标准，作为算法/编码/依赖回归的守卫。设置钉在测试代码、不扩 CLI 面；库级 golden 经「CLI 原样 `fs::write`」传递性覆盖 CLI 写出（规则 5），且测试只在 CLI 层读盘、`bead-core` 不碰文件系统（规则 1）。字节断言在 canonical 平台（arm64 Linux）成立，因 Lanczos3 经 `f32::sin` 跨平台 ULP 不保证——其余平台跑同一测试但只断言浮点无关的结构不变量，确定性（规则 2）在本范围内澄清为「同平台/同 `image` 版本逐字节相同」。`.gitattributes` 保文本金标准跨平台恒为 LF；任何改字节的改动须响亮失败，`BLESS=1`（仅 canonical 生效）重生使变化进 `git diff` 受评审。
+对一组固定夹具与固定设置，把 `generate_pattern` + `pattern_json` 经库 API 产出的四块产物（`pattern.json` / `summary.txt` / `preview.png` / `grid.png`）冻结成 committed 字节金标准，作为算法/编码/依赖回归的守卫。设置钉在测试代码、不扩 CLI 面；库级 golden 经「CLI 原样 `fs::write`」传递性覆盖 CLI 写出（规则 5），且测试只在 CLI 层读盘、`bead-core` 不碰文件系统（规则 1）。字节断言在 canonical 平台（arm64 Linux）成立，因 Lanczos3 经 `f32::sin`、默认 LabMatcher 经 `cbrt`/`powf` 跨平台 ULP 不保证——其余平台跑同一测试但只断言浮点无关的结构不变量，确定性（规则 2）在本范围内澄清为「同平台/同 `image` 版本逐字节相同」。`.gitattributes` 保文本金标准跨平台恒为 LF；任何改字节的改动须响亮失败，`BLESS=1`（仅 canonical 生效）重生使变化进 `git diff` 受评审。
 
 ## 需求
 
@@ -25,7 +25,7 @@ golden **必须**用固定夹具 `samples/gradient.png` 与固定设置 `width=1
 - **那么** 产出与金标准一致；**改变任一设置**（宽高/filter/cell_size/palette）即与金标准不符——设置是金标准的一部分
 
 ### 需求:真实默认路径、arm64-Linux-canonical 字节断言 + 跨平台结构不变量
-golden **必须**用引擎**真实默认 `Lanczos3`**（CLI 默认、用户真拿到的路径），**禁止**为求跨平台通过而改用非默认 filter（如 `Nearest`）掩盖真实 resize 路径的回归覆盖。**字节级**金标准断言**只在 canonical 平台（**arm64 Linux**，gate `cfg!(target_os="linux") && cfg!(target_arch="aarch64")`，CI 参考 ubuntu-24.04-arm）**成立；其余平台（x86-64 Linux/macOS/Windows）跑**同一测试**但仅断言**浮点无关的结构不变量**（PNG 可解码、`preview` 160×200、`pattern.json` 键序与计数、`summary.txt` 结构、`grid.png` 固定常量像素），**禁止**跨平台比对走浮点 resize 的 cell 颜色字节。依据 design D1：`image 0.25.10` 的 Lanczos3 权重经 `f32::sin`（`sample.rs:149-156`）→ 跨平台 ULP 不保证 → resize 字节跨平台一致**不保证、不要求**。确定性（规则 2）在本 change 范围内澄清为**同平台/同 `image` 版本**逐字节相同。
+golden **必须**用引擎**真实默认 `Lanczos3`**（CLI 默认、用户真拿到的路径），**禁止**为求跨平台通过而改用非默认 filter（如 `Nearest`）掩盖真实 resize 路径的回归覆盖。**字节级**金标准断言**只在 canonical 平台（**arm64 Linux**，gate `cfg!(target_os="linux") && cfg!(target_arch="aarch64")`，CI 参考 ubuntu-24.04-arm）**成立；其余平台（x86-64 Linux/macOS/Windows）跑**同一测试**但仅断言**浮点无关的结构不变量**（PNG 可解码、`preview` 160×200、`pattern.json` 键序与计数、`summary.txt` 结构、`grid.png` 固定常量像素），**禁止**跨平台比对走浮点 resize 的 cell 颜色字节。依据 design D1：`image 0.25.10` 的 Lanczos3 权重经 `f32::sin`（`sample.rs:149-156`）、加之默认 `LabMatcher` 经 `cbrt`/`powf` → 跨平台 ULP 不保证 → resize 与配色字节跨平台一致**不保证、不要求**。确定性（规则 2）在本 change 范围内澄清为**同平台/同 `image` 版本**逐字节相同。
 
 #### 场景:canonical 平台字节冻结、非 canonical 平台结构断言
 - **当** CI 在 ubuntu-24.04-arm（canonical, arm64）跑 golden 测试
