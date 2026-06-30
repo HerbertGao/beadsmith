@@ -1,7 +1,7 @@
 # mobile-app 规范
 
 ## 目的
-待定 - 由归档变更 add-mobile-mvp 创建。归档后请更新目的。
+定义 `apps/mobile` 的离线 Flutter MVP：四屏导航、调桥生成、裁剪前置、默认调色板内置和结果复制，确保用户在无网络环境下完成 INIT 闭环。
 ## 需求
 ### 需求:四屏离线导航流
 
@@ -103,4 +103,3 @@ App 必须使用户能完成 INIT.md「Success Criteria」的完整闭环:①选
   summary 为 INIT 格式)。**不要求**与 host `bead-cli`
   逐字节/逐值相等——iOS 与 host 是不同目标/libm(Rule 3 跨目标 caveat);byte-exact「CLI == FFI」由 host 端
   M8 既有决定性测试保证
-
