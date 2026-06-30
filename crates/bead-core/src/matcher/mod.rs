@@ -521,7 +521,11 @@ mod tests {
     #[test]
     fn lab_conversion_known_values() {
         let black = srgb_to_lab([0, 0, 0]);
-        assert!(black[0].abs() < 0.01, "black L must be ~0, got {}", black[0]);
+        assert!(
+            black[0].abs() < 0.01,
+            "black L must be ~0, got {}",
+            black[0]
+        );
         assert!(black[1].abs() < 0.01 && black[2].abs() < 0.01);
 
         let white = srgb_to_lab([255, 255, 255]);
@@ -574,7 +578,10 @@ mod tests {
         let lab_idx = lab.find_best_match(target);
         let rgb_idx = rgb.find_best_match(target);
         assert_eq!(rgb_idx, 0, "RgbMatcher picks navy on [40,40,40]");
-        assert_eq!(lab_idx, 1, "LabMatcher picks olive (perceptually nearer) on [40,40,40]");
+        assert_eq!(
+            lab_idx, 1,
+            "LabMatcher picks olive (perceptually nearer) on [40,40,40]"
+        );
         assert_ne!(
             lab_idx, rgb_idx,
             "LabMatcher must differ from RgbMatcher on a perceptual mismatch"
