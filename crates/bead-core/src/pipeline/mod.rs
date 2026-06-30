@@ -19,18 +19,25 @@ use crate::image::{image_to_grid, ResizeOptions};
 use crate::matcher::{match_pattern, LabMatcher};
 use crate::models::{BeadPattern, ColorStat};
 use crate::palette::Palette;
+use crate::quantizer::{MedianCutQuantizer, Quantizer};
 use crate::renderer::{render_grid, render_preview, RenderOptions};
 use crate::statistics::{count_colors, generate_summary, total_beads};
 use crate::BeadError;
 
-/// Options for [`generate_pattern`]: target grid dimensions plus the resize and
-/// render sub-options. `width` / `height` are the bead-grid size in cells.
+/// Options for [`generate_pattern`]: target grid dimensions plus the resize,
+/// optional color-reduction, and render sub-options. `width` / `height` are the
+/// bead-grid size in cells.
 ///
 /// Plain `Default` (no `#[non_exhaustive]`, design D3): callers construct it
 /// with struct-update syntax, e.g. `GenerateOptions { width, height,
-/// ..Default::default() }`.
+/// ..Default::default() }`. `max_colors` defaults to `None` (no color
+/// reduction — the grid passes through to matching verbatim); `Some(n)` runs
+/// [`MedianCutQuantizer`] after `image_to_grid` and before `match_pattern`,
+/// reducing the grid to ≤`n` representative colors. `Some(0)` is rejected
+/// inside `generate_pattern` by `MedianCutQuantizer::new` (reuses
+/// `BeadError::InvalidImage`, no new variant), not by `GenerateOptions` itself.
 // ponytail: Default 的 0×0 非「能跑配置」、是 ..default() 填充便利；维度非法由 image_to_grid 既有 0-守卫干净返 Err、不 panic。
-// derive(Default) 即产 width:0/height:0/resize:Default(Lanczos3)/render:Default(cell_size 10)，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
+// derive(Default) 即产 width:0/height:0/resize:Default(Lanczos3)/render:Default(cell_size 10)/max_colors:None，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GenerateOptions {
     /// Target grid width in cells.
@@ -41,6 +48,11 @@ pub struct GenerateOptions {
     pub resize: ResizeOptions,
     /// How the pattern is rendered to PNG (cell size, shape).
     pub render: RenderOptions,
+    /// Optional Phase-2 color reduction: `Some(n)` reduces the grid to ≤`n`
+    /// representative colors via [`MedianCutQuantizer`] before color matching;
+    /// `None` (the default) skips the stage so the grid reaches matching
+    /// verbatim (byte-identical to the pre-reduction pipeline).
+    pub max_colors: Option<u32>,
 }
 
 /// The full result of [`generate_pattern`]: the source-of-truth pattern, its
@@ -72,15 +84,27 @@ pub struct GenerateResult {
 ///
 /// Faithfully chains the existing primitives in a fixed order, threading the
 /// **same** `palette` through matcher, statistics, and renderer (the
-/// single-`Palette` invariant, design D1). Errors from any stage propagate via
-/// `?` as their existing [`BeadError`] variant — no new variant is introduced
-/// (design D7).
+/// single-`Palette` invariant, design D1). The fixed order is:
+/// `image_to_grid` → optional color reduction (when `opts.max_colors ==
+/// Some(n)`, `MedianCutQuantizer::new(n)?.quantize(&grid)`; when `None`, the
+/// stage is skipped and the grid is passed through verbatim — byte-identical
+/// to the pre-reduction pipeline) → `LabMatcher::new(palette)` →
+/// `match_pattern` → `count_colors` / `generate_summary` → `render_preview` /
+/// `render_grid`. Errors from any stage propagate via `?` as their existing
+/// [`BeadError`] variant — no new variant is introduced (design D7). In
+/// particular `opts.max_colors == Some(0)` surfaces `MedianCutQuantizer::new`'s
+/// `Err(InvalidImage { reason })` (reason mentions "max_colors"), before any
+/// matching or rendering.
 pub fn generate_pattern(
     image_bytes: &[u8],
     palette: &Palette,
     opts: &GenerateOptions,
 ) -> Result<GenerateResult, BeadError> {
     let grid = image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)?;
+    let grid = match opts.max_colors {
+        Some(n) => MedianCutQuantizer::new(n)?.quantize(&grid),
+        None => grid,
+    };
     let m = LabMatcher::new(palette)?;
     let pattern = match_pattern(&grid, &m);
     let stats = count_colors(&pattern, palette);
@@ -493,6 +517,85 @@ mod tests {
         assert_eq!(
             first.grid_png, second.grid_png,
             "grid PNG must be byte-equal"
+        );
+    }
+
+    // ---- 3.5 ------------------------------------------------------------------
+
+    // max_colors=None vs. ..Default::default(): both omit the reduction stage,
+    // so the GenerateResult is field-equal (default path unchanged — spec
+    // "max_colors=None 时默认路径逐字节不变").
+    #[test]
+    fn max_colors_none_matches_default() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = demo_png(24, 24);
+
+        let opts_none = GenerateOptions {
+            width: w,
+            height: h,
+            max_colors: None,
+            ..Default::default()
+        };
+        let opts_default = demo_opts(w, h); // max_colors via Default -> None
+
+        let none = generate_pattern(&bytes, &palette, &opts_none).expect("none must succeed");
+        let def = generate_pattern(&bytes, &palette, &opts_default).expect("default must succeed");
+
+        assert_eq!(none.pattern, def.pattern);
+        assert_eq!(none.stats, def.stats);
+        assert_eq!(none.summary, def.summary);
+        assert_eq!(none.brand, def.brand);
+        assert_eq!(none.preview_png, def.preview_png);
+        assert_eq!(none.grid_png, def.grid_png);
+    }
+
+    // max_colors == Some(0): generate_pattern returns Err(InvalidImage) with a
+    // reason mentioning "max_colors" (surfaced from MedianCutQuantizer::new),
+    // and does not panic (spec "max_colors==0 返回确定性 Err 而非 panic").
+    #[test]
+    fn max_colors_zero_rejected() {
+        let palette = demo_palette();
+        let bytes = demo_png(16, 16);
+        let opts = GenerateOptions {
+            width: 8,
+            height: 8,
+            max_colors: Some(0),
+            ..Default::default()
+        };
+        let err = generate_pattern(&bytes, &palette, &opts)
+            .expect_err("max_colors == Some(0) must be rejected");
+        match err {
+            BeadError::InvalidImage { reason } => assert!(
+                reason.contains("max_colors"),
+                "reason must mention max_colors, got: {reason:?}"
+            ),
+            other => panic!("expected InvalidImage, got {other:?}"),
+        }
+    }
+
+    // max_colors == Some(n) below the grid's distinct-color count: the resulting
+    // distinct bead colors (stats.len()) must be ≤ n (upper-bound semantics —
+    // spec "Some(n) 小于全色时 stats 的不同色数 ≤ n").
+    #[test]
+    fn max_colors_bounds_distinct_stats() {
+        let palette = demo_palette();
+        // 4 hues spaced out so the gradient yields several distinct colors pre-
+        // reduction; n=2 is well below the distinct count.
+        let (w, h) = (8u32, 8u32);
+        let bytes = demo_png(16, 16);
+        let n = 2u32;
+        let opts = GenerateOptions {
+            width: w,
+            height: h,
+            max_colors: Some(n),
+            ..Default::default()
+        };
+        let result = generate_pattern(&bytes, &palette, &opts).expect("quantized run succeeds");
+        assert!(
+            result.stats.len() <= n as usize,
+            "stats.len() ({}) must be <= max_colors ({n})",
+            result.stats.len()
         );
     }
 }
