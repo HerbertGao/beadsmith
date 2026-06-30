@@ -30,6 +30,27 @@ pub trait ColorMatcher {
     fn find_best_match(&self, target: [u8; 3]) -> u16;
 }
 
+/// Shared `new`-time palette-size guard for both matchers (design D7; reuses
+/// `InvalidPalette`, no new variant): empty `colors` → `InvalidPalette`
+/// (`reason` contains "no colors"); `colors.len() > 65536` → `InvalidPalette`
+/// (`reason` contains "more than"), guarding `index as u16` truncation. The
+/// boundary is exact: legal indices are `0..=65535` (`u16::MAX == 65535`), so
+/// `len == 65536` is accepted and `65537` is the first rejected length. Never
+/// panics.
+fn check_palette_len(palette: &Palette) -> Result<(), BeadError> {
+    if palette.colors.is_empty() {
+        return Err(BeadError::InvalidPalette {
+            reason: "matcher: palette has no colors".to_string(),
+        });
+    }
+    if palette.colors.len() > 65536 {
+        return Err(BeadError::InvalidPalette {
+            reason: "matcher: palette has more than 65536 colors".to_string(),
+        });
+    }
+    Ok(())
+}
+
 /// Phase 1 matcher: RGB squared-Euclidean distance, lowest index on a tie.
 ///
 /// Holds an order-preserving snapshot of the palette's RGB taken at
@@ -45,28 +66,10 @@ pub struct RgbMatcher {
 }
 
 impl RgbMatcher {
-    /// Build a matcher from a one-time, order-preserving palette snapshot.
-    ///
-    /// Rejects two cases (design D7; reuses `InvalidPalette`, no new variant):
-    /// - empty `colors` → `InvalidPalette` (`reason` contains "no colors"),
-    /// - `colors.len() > 65536` → `InvalidPalette` (`reason` contains "more
-    ///   than"), guarding against `index as u16` silently truncating. The
-    ///   boundary is exact: legal indices are `0..=65535` (`u16::MAX == 65535`),
-    ///   so `len == 65536` is accepted; the first overflowing length is 65537.
-    ///
-    /// Never panics.
+    /// Build a matcher from a one-time, order-preserving RGB snapshot;
+    /// size-validated via [`check_palette_len`]. Never panics.
     pub fn new(palette: &Palette) -> Result<RgbMatcher, BeadError> {
-        if palette.colors.is_empty() {
-            return Err(BeadError::InvalidPalette {
-                reason: "matcher: palette has no colors".to_string(),
-            });
-        }
-        if palette.colors.len() > 65536 {
-            return Err(BeadError::InvalidPalette {
-                reason: "matcher: palette has more than 65536 colors".to_string(),
-            });
-        }
-
+        check_palette_len(palette)?;
         let colors: Vec<[u8; 3]> = palette.colors.iter().map(|c| c.rgb).collect();
         Ok(RgbMatcher { colors })
     }
@@ -167,26 +170,11 @@ pub struct LabMatcher {
 }
 
 impl LabMatcher {
-    /// Build a matcher from a one-time, order-preserving Lab snapshot.
-    ///
-    /// Reuses [`RgbMatcher::new`]'s two guards verbatim (same `InvalidPalette`
-    /// reason strings, no new `BeadError` variant): empty `colors` →
-    /// `InvalidPalette` (`reason` contains "no colors"); `colors.len() > 65536`
-    /// → `InvalidPalette` (`reason` contains "more than"). The boundary is
-    /// exact: `len == 65536` is accepted (indices `0..=65535` fit in `u16`),
-    /// `65537` is the first rejected length. Never panics.
+    /// Build a matcher from a one-time, order-preserving Lab snapshot;
+    /// size-validated via [`check_palette_len`] (same guards as `RgbMatcher`).
+    /// Never panics.
     pub fn new(palette: &Palette) -> Result<LabMatcher, BeadError> {
-        if palette.colors.is_empty() {
-            return Err(BeadError::InvalidPalette {
-                reason: "matcher: palette has no colors".to_string(),
-            });
-        }
-        if palette.colors.len() > 65536 {
-            return Err(BeadError::InvalidPalette {
-                reason: "matcher: palette has more than 65536 colors".to_string(),
-            });
-        }
-
+        check_palette_len(palette)?;
         // One-time sRGB->Lab conversion, amortized over all pixels (design D4).
         let colors: Vec<[f32; 3]> = palette.colors.iter().map(|c| srgb_to_lab(c.rgb)).collect();
         Ok(LabMatcher { colors })
