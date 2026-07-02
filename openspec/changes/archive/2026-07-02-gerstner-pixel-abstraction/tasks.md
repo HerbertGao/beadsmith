@@ -45,7 +45,7 @@
 - [x] 7.2 `cargo build` / `cargo test` / `cargo clippy --all-targets` 全绿
 - [x] 7.3 同步 `ARCHITECTURE.md`（新增「生成模式」段：`Staged` 默认 / `Gerstner` 照片路径 opt-in、走 `gerstner` 模块、palette-constrained、确定性同机）；`INIT.md`/`ROADMAP.md` 若需注明生成策略层
 - [x] 7.4 golden：确认**默认 `Staged` golden 不变**；**为 Gerstner 加一份合成小夹具 golden**（手构 8×8 两色/渐变 `RgbImage`、**无二进制照片**）——canonical arm64 字节冻结，或跨机结构不变量（cell 数 = w×h、色都在板内、若干已知 cell 下标）；这守住 review 抓的 5 个确定性机制（同机重算单测证不了结构回归，见 SA 评审）
-- [ ] 7.5 归档时更新主规范 `pipeline` 的 `## 需求:管线错误透传` 零维归因（当前写「reason 源自 `image_to_grid` 的目标维度守卫」）：改为「零维现由 `generate_pattern` **顶层 ⓪ 维度守卫**返回、**镜像** `image_to_grid` 的维度 reason（含 "target width"/"target height"）、**两 generator 一致**」——delta 未整体 MODIFY 该需求，故与 `目的` 段同属归档时 prose 对齐（F10，非行为矛盾、reason 仍满足既有断言）
+- [x] 7.5 归档时更新主规范 `pipeline` 的 `## 需求:管线错误透传` 零维归因（当前写「reason 源自 `image_to_grid` 的目标维度守卫」）：改为「零维现由 `generate_pattern` **顶层 ⓪ 维度守卫**返回、**镜像** `image_to_grid` 的维度 reason（含 "target width"/"target height"）、**两 generator 一致**」——delta 未整体 MODIFY 该需求，故与 `目的` 段同属归档时 prose 对齐（F10，非行为矛盾、reason 仍满足既有断言）
 
 ## 8. 性能 + CLI==FFI
 
