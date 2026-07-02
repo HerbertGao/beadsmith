@@ -16,7 +16,8 @@
 //! `String`. Persisting any of it is the frontend's job.
 
 use crate::cleanup::despeckle;
-use crate::image::{image_to_grid, ResizeOptions};
+use crate::gerstner::{superpixel_assign, GeneratorKind};
+use crate::image::{crop_center, decode_image, image_to_grid, ResizeOptions};
 use crate::matcher::{
     match_pattern, ColorMatcher, LabMatcher, MatcherKind, OklabMatcher, RgbMatcher,
 };
@@ -60,6 +61,11 @@ pub struct GenerateOptions {
     pub max_colors: Option<u32>,
     /// Matcher implementation used for color matching. Defaults to Oklab.
     pub matcher: MatcherKind,
+    /// Which generation front end to use. Defaults to [`GeneratorKind::Staged`]
+    /// (the staged crop→resize→match path, byte-for-byte unchanged). The
+    /// `generate_pattern` branch on this is wired in a later task group; adding
+    /// the field here keeps the default path untouched.
+    pub generator: GeneratorKind,
     /// Optional connected-component despeckling (see [`crate::cleanup::despeckle`]):
     /// `Some(s)` merges same-color 4-connected components of ≤`s` beads into
     /// their majority neighbor color **after** reduction; `Some(0)` is a legal
@@ -98,42 +104,92 @@ pub struct GenerateResult {
 /// Faithfully chains the existing primitives in a fixed **fail-fast** order,
 /// threading the **same** `palette` through matcher, statistics, and renderer
 /// (the single-`Palette` invariant, design D1). The fixed order is:
-/// `image_to_grid` → **reducer fail-fast construction** (when `opts.max_colors
-/// == Some(n)`, `GreedyReducer::new(palette, opts.matcher, n)?` is built
-/// **before** the matcher, so `max_colors == 0`'s `InvalidImage` precedes the
-/// matcher's `InvalidPalette`; `None` builds nothing) → selected matcher
-/// (`RgbMatcher`, `LabMatcher`, or default `OklabMatcher`) → `match_pattern` →
-/// **optional reduction** (when `Some(n)`, `reducer.reduce(&pattern)` on the
-/// matched pattern; `None` leaves it verbatim) → **optional despeckle** (when
-/// `opts.despeckle == Some(s)`, `despeckle(&pattern, s)` on the reduced pattern;
-/// `None` leaves it verbatim) → `count_colors` / `generate_summary` →
-/// `render_preview` / `render_grid`. Statistics and both PNGs derive from the
-/// (possibly reduced, possibly despeckled) pattern. Errors from any stage
-/// propagate via `?` as their existing [`BeadError`] variant — no new variant
-/// is introduced (design D7). In particular `opts.max_colors == Some(0)`
-/// surfaces `GreedyReducer::new`'s `Err(InvalidImage { reason })` (reason
-/// mentions "max_colors"), before any matching or rendering.
+///
+/// **⓪ top-level dimension guard** (`opts.width > 0 && opts.height > 0`,
+/// mirroring `image_to_grid`'s pre-decode guard) — runs **before** the
+/// generator branch, decoding, and reducer construction, so both generators
+/// reject a zero dimension identically as `InvalidImage` → **① front-end image
+/// preprocessing (branch on `opts.generator`)**: `Staged` = `image_to_grid`
+/// (decode/crop/resize) → `PixelGrid`; `Gerstner` = `decode_image` +
+/// `crop_center` → cropped source `RgbImage` (plus its own upsampling guard) →
+/// **② reducer fail-fast construction** (when `opts.max_colors == Some(n)`,
+/// `GreedyReducer::new(palette, opts.matcher, n)?` is built **after ①, before
+/// ③**, so image errors precede `max_colors == 0`'s `InvalidImage`, which in
+/// turn precedes the matcher's `InvalidPalette`; `None` builds nothing) → **③
+/// coloring / assignment (branch)**: `Staged` = selected matcher
+/// (`RgbMatcher` / `LabMatcher` / `OklabMatcher`) + `match_pattern`; `Gerstner`
+/// = `superpixel_assign` (Oklab superpixels, palette-constrained) → **④ shared
+/// tail**: **optional reduction** (`Some(n)` → `reducer.reduce`) → **optional
+/// despeckle** (`Some(s)` → `despeckle`) → `count_colors` / `generate_summary`
+/// → `render_preview` / `render_grid`.
+///
+/// Statistics and both PNGs derive from the (possibly reduced, possibly
+/// despeckled) pattern. Errors from any stage propagate via `?` as their
+/// existing [`BeadError`] variant — no new variant is introduced (design D7),
+/// and the priority (zero dim → `ImageDecode` → Gerstner upsampling →
+/// `max_colors` → `InvalidPalette`) is identical for both generators. The
+/// `Staged` path is byte-for-byte unchanged from before the `generator` branch.
 pub fn generate_pattern(
     image_bytes: &[u8],
     palette: &Palette,
     opts: &GenerateOptions,
 ) -> Result<GenerateResult, BeadError> {
-    let grid = image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)?;
-    // Fail-fast: when reducing, build the reducer BEFORE the matcher so that
-    // `max_colors == 0` surfaces `InvalidImage` ahead of the matcher's
-    // `InvalidPalette` (`GreedyReducer::new` validates `max_colors >= 1` before
-    // the palette). `None` skips construction entirely. See pipeline spec error
-    // priority.
+    // ⓪ Top-level dimension guard: reject a zero target dimension before the
+    // generator branch, decoding, and reducer construction, so both generators
+    // agree (mirrors image_to_grid's own pre-decode guard + reason text).
+    if opts.width == 0 {
+        return Err(BeadError::InvalidImage {
+            reason: "target width is 0".to_string(),
+        });
+    }
+    if opts.height == 0 {
+        return Err(BeadError::InvalidImage {
+            reason: "target height is 0".to_string(),
+        });
+    }
+
+    // ① Front-end image preprocessing, branched on the generator. Staged carries
+    // a resized PixelGrid; Gerstner carries the cropped source image (superpixel
+    // assignment downsamples it itself). One of the two is held across ② so the
+    // reducer's fail-fast lands between preprocessing and coloring.
+    enum Front {
+        Staged(crate::models::PixelGrid),
+        Gerstner(::image::RgbImage),
+    }
+    let front = match opts.generator {
+        GeneratorKind::Staged => Front::Staged(image_to_grid(
+            image_bytes,
+            opts.width,
+            opts.height,
+            &opts.resize,
+        )?),
+        GeneratorKind::Gerstner => {
+            let decoded = decode_image(image_bytes)?;
+            Front::Gerstner(crop_center(&decoded, opts.width, opts.height)?)
+        }
+    };
+    // ② Fail-fast: when reducing, build the reducer AFTER preprocessing and
+    // BEFORE coloring so that `max_colors == 0` surfaces `InvalidImage` ahead of
+    // the matcher's `InvalidPalette` (`GreedyReducer::new` validates
+    // `max_colors >= 1` before the palette). `None` skips construction entirely.
+    // See pipeline spec error priority.
     let reducer = match opts.max_colors {
         Some(n) => Some(GreedyReducer::new(palette, opts.matcher, n)?),
         None => None,
     };
-    let matcher: Box<dyn ColorMatcher> = match opts.matcher {
-        MatcherKind::Rgb => Box::new(RgbMatcher::new(palette)?),
-        MatcherKind::Lab => Box::new(LabMatcher::new(palette)?),
-        MatcherKind::Oklab => Box::new(OklabMatcher::new(palette)?),
+    // ③ Coloring / board assignment, branched on the generator. Both produce a
+    // full-board pattern; the shared tail below is identical.
+    let pattern = match front {
+        Front::Staged(grid) => {
+            let matcher: Box<dyn ColorMatcher> = match opts.matcher {
+                MatcherKind::Rgb => Box::new(RgbMatcher::new(palette)?),
+                MatcherKind::Lab => Box::new(LabMatcher::new(palette)?),
+                MatcherKind::Oklab => Box::new(OklabMatcher::new(palette)?),
+            };
+            match_pattern(&grid, matcher.as_ref())
+        }
+        Front::Gerstner(cropped) => superpixel_assign(&cropped, palette, opts.width, opts.height)?,
     };
-    let pattern = match_pattern(&grid, matcher.as_ref());
     // Optional bead-color reduction runs AFTER matching, on the matched pattern
     // (design D1): `None` leaves the pattern verbatim. Stats/summary/both PNGs
     // below all derive from this (possibly reduced) pattern.
@@ -998,5 +1054,171 @@ mod tests {
             distinct(&result.pattern.cells)
         );
         assert!(result.stats.len() <= n as usize);
+    }
+
+    // ---- G2 (Gerstner pipeline branch) ---------------------------------------
+
+    /// A quadrant image (red/green/blue/white) — the four regions force ≥ n
+    /// distinct beads so the reduction stage is actually exercised. Source is
+    /// larger than the Gerstner target (S >= 1).
+    fn quadrant_png(w: u32, h: u32) -> Vec<u8> {
+        let img = ::image::RgbImage::from_fn(w, h, |x, y| {
+            let px = match (x < w / 2, y < h / 2) {
+                (true, true) => [255, 0, 0],
+                (false, true) => [0, 255, 0],
+                (true, false) => [0, 0, 255],
+                (false, false) => [255, 255, 255],
+            };
+            ::image::Rgb(px)
+        });
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ::image::DynamicImage::ImageRgb8(img)
+            .write_to(&mut cursor, ::image::ImageFormat::Png)
+            .expect("encoding the test PNG must succeed");
+        cursor.into_inner()
+    }
+
+    // 6.4 — Gerstner + max_colors == Some(n): reduction runs in the shared tail,
+    // so the final distinct bead-color count (and stats.len()) is ≤ n.
+    #[test]
+    fn gerstner_max_colors_bounds_distinct() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = quadrant_png(24, 24); // source > target -> Gerstner S >= 1
+        let n = 2u32;
+        let opts = GenerateOptions {
+            width: w,
+            height: h,
+            max_colors: Some(n),
+            generator: GeneratorKind::Gerstner,
+            ..Default::default()
+        };
+
+        let result = generate_pattern(&bytes, &palette, &opts).expect("gerstner reduced run");
+
+        assert_eq!(result.pattern.cells.len() as u32, w * h);
+        assert!(
+            distinct(&result.pattern.cells) <= n as usize,
+            "Gerstner reduced pattern must be <= {n} distinct beads, got {}",
+            distinct(&result.pattern.cells)
+        );
+        assert!(
+            result.stats.len() <= n as usize,
+            "stats.len() ({}) must be <= max_colors ({n})",
+            result.stats.len()
+        );
+    }
+
+    // 6.5 — generator == Staged is byte-for-byte identical to the default path
+    // (Default::generator is already Staged), proving the branch introduces no
+    // difference on the default arm.
+    #[test]
+    fn generator_staged_matches_default() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = demo_png(24, 24);
+
+        let staged = GenerateOptions {
+            generator: GeneratorKind::Staged,
+            ..demo_opts(w, h)
+        };
+        let default = demo_opts(w, h); // generator via Default -> Staged
+
+        let a = generate_pattern(&bytes, &palette, &staged).expect("explicit staged");
+        let b = generate_pattern(&bytes, &palette, &default).expect("default");
+
+        assert_eq!(a.pattern, b.pattern);
+        assert_eq!(a.stats, b.stats);
+        assert_eq!(a.summary, b.summary);
+        assert_eq!(a.brand, b.brand);
+        assert_eq!(
+            a.preview_png, b.preview_png,
+            "preview PNG must be byte-equal"
+        );
+        assert_eq!(a.grid_png, b.grid_png, "grid PNG must be byte-equal");
+    }
+
+    // 6.8 — valid image + illegal palette + max_colors == Some(0): the reducer's
+    // InvalidImage (reason mentions "max_colors") wins over the palette's
+    // InvalidPalette in BOTH generators, because the reducer is built after
+    // preprocessing and before coloring in either branch.
+    #[test]
+    fn max_colors_zero_precedes_invalid_palette_both_generators() {
+        let bytes = quadrant_png(16, 16); // decodable; > target 8x8 for Gerstner
+        let empty_palette = Palette {
+            brand: "Empty".to_string(),
+            colors: vec![],
+        };
+        for generator in [GeneratorKind::Staged, GeneratorKind::Gerstner] {
+            let opts = GenerateOptions {
+                width: 8,
+                height: 8,
+                max_colors: Some(0),
+                generator,
+                ..Default::default()
+            };
+            let err = generate_pattern(&bytes, &empty_palette, &opts)
+                .expect_err("max_colors == Some(0) must be rejected before palette");
+            match err {
+                BeadError::InvalidImage { reason } => assert!(
+                    reason.contains("max_colors"),
+                    "reason must mention max_colors for {generator:?}, got: {reason:?}"
+                ),
+                other => panic!(
+                    "expected InvalidImage (not InvalidPalette) for {generator:?}, got {other:?}"
+                ),
+            }
+        }
+    }
+
+    // 6.9 — the top-level dimension guard rejects a zero target in BOTH
+    // generators, before decoding and the generator branch, with a reason
+    // mirroring image_to_grid's ("target width"/"target height"). Even garbage
+    // bytes surface the zero-dim error first (guard precedes decode).
+    #[test]
+    fn zero_dimension_guard_precedes_decode_both_generators() {
+        let valid = demo_png(16, 16);
+        for generator in [GeneratorKind::Staged, GeneratorKind::Gerstner] {
+            let opts_w0 = GenerateOptions {
+                width: 0,
+                height: 8,
+                generator,
+                ..Default::default()
+            };
+            match generate_pattern(&valid, &demo_palette(), &opts_w0)
+                .expect_err("width==0 must be rejected")
+            {
+                BeadError::InvalidImage { reason } => assert!(
+                    reason.contains("target width"),
+                    "reason must name target width for {generator:?}, got: {reason:?}"
+                ),
+                other => panic!("expected InvalidImage for {generator:?}, got {other:?}"),
+            }
+
+            let opts_h0 = GenerateOptions {
+                width: 8,
+                height: 0,
+                generator,
+                ..Default::default()
+            };
+            match generate_pattern(&valid, &demo_palette(), &opts_h0)
+                .expect_err("height==0 must be rejected")
+            {
+                BeadError::InvalidImage { reason } => assert!(
+                    reason.contains("target height"),
+                    "reason must name target height for {generator:?}, got: {reason:?}"
+                ),
+                other => panic!("expected InvalidImage for {generator:?}, got {other:?}"),
+            }
+
+            // Guard precedes decoding: garbage bytes + zero dim still yield the
+            // zero-dim InvalidImage (not ImageDecode).
+            let err = generate_pattern(b"not an image", &demo_palette(), &opts_w0)
+                .expect_err("zero dim must be rejected before decode");
+            assert!(
+                matches!(err, BeadError::InvalidImage { .. }),
+                "zero dim must precede decode for {generator:?}, got {err:?}"
+            );
+        }
     }
 }

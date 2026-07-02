@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use bead_core::pipeline::pattern_json;
-use bead_core::{generate_pattern, load_palette, GenerateOptions, MatcherKind};
+use bead_core::{generate_pattern, load_palette, GenerateOptions, GeneratorKind, MatcherKind};
 use clap::{Parser, Subcommand, ValueEnum};
 
 /// Beadsmith CLI — turns images into bead patterns. Thin wrapper over
@@ -38,6 +38,9 @@ enum Command {
         /// Matching strategy: rgb, lab, or oklab.
         #[arg(long, value_enum, default_value = "oklab")]
         matcher: CliMatcher,
+        /// Generation mode: staged (default) or gerstner (photo path).
+        #[arg(long, value_enum, default_value = "staged")]
+        generator: CliGenerator,
         /// Output directory (created if missing; files are overwritten).
         #[arg(long)]
         output: PathBuf,
@@ -80,11 +83,12 @@ fn main() -> Result<()> {
             width,
             height,
             matcher,
+            generator,
             output,
             max_colors,
             despeckle,
         } => generate(
-            &input, &palette, width, height, matcher, &output, max_colors, despeckle,
+            &input, &palette, width, height, matcher, generator, &output, max_colors, despeckle,
         ),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
@@ -109,6 +113,7 @@ fn generate(
     width: u32,
     height: u32,
     matcher: CliMatcher,
+    generator: CliGenerator,
     output: &Path,
     max_colors: Option<u32>,
     despeckle: Option<u32>,
@@ -124,6 +129,7 @@ fn generate(
         width,
         height,
         matcher: matcher.into(),
+        generator: generator.into(),
         max_colors,
         despeckle,
         ..Default::default()
@@ -166,6 +172,21 @@ impl From<CliMatcher> for MatcherKind {
             CliMatcher::Rgb => Self::Rgb,
             CliMatcher::Lab => Self::Lab,
             CliMatcher::Oklab => Self::Oklab,
+        }
+    }
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+enum CliGenerator {
+    Staged,
+    Gerstner,
+}
+
+impl From<CliGenerator> for GeneratorKind {
+    fn from(v: CliGenerator) -> Self {
+        match v {
+            CliGenerator::Staged => Self::Staged,
+            CliGenerator::Gerstner => Self::Gerstner,
         }
     }
 }

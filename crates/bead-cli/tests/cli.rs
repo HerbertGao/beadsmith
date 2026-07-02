@@ -259,6 +259,96 @@ fn cli_generate_matcher_flag_accepts_known_values_and_rejects_unknown() {
     let _ = fs::remove_dir_all(&work);
 }
 
+/// 5.2 — `--generator staged|gerstner` each exit 0 and write four non-empty
+/// files; omitting the flag matches `staged` byte-for-byte (default); an
+/// out-of-set value (e.g. `slic`) is rejected by clap with exit code 2, stderr
+/// naming the possible values, no panic, and no output dir created. Source
+/// `gradient.png` is 32x40 and the target is 16x20, so gerstner's upsample
+/// guard (target <= source) is satisfied. Same fixture/no-deps style.
+#[test]
+fn cli_generator_flag_accepts_known_values_and_rejects_unknown() {
+    let work = scratch("cli-generator");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    let run = |out: &Path, extra: &[&str]| {
+        let mut cmd = Command::new(BIN);
+        cmd.args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(out)
+            .args(extra);
+        cmd.output().expect("run generate")
+    };
+
+    let four = |out: &Path| {
+        [
+            out.join("preview.png"),
+            out.join("grid.png"),
+            out.join("pattern.json"),
+            out.join("summary.txt"),
+        ]
+    };
+
+    // --- --generator staged / gerstner: exit 0, four non-empty files ---------
+    for generator in ["staged", "gerstner"] {
+        let out = work.join(format!("g-{generator}"));
+        let r = run(&out, &["--generator", generator]);
+        assert!(
+            r.status.success(),
+            "generate --generator {generator} must exit 0; stderr: {}",
+            String::from_utf8_lossy(&r.stderr)
+        );
+        for f in four(&out) {
+            let meta = fs::metadata(&f).unwrap_or_else(|e| panic!("missing {f:?}: {e}"));
+            assert!(
+                meta.len() > 0,
+                "{f:?} must be non-empty for generator {generator}"
+            );
+        }
+    }
+
+    // --- omitting --generator == --generator staged (default, byte-identical) -
+    let none = work.join("g-none");
+    let rn = run(&none, &[]);
+    assert!(
+        rn.status.success(),
+        "generate without --generator must exit 0"
+    );
+    for (a, b) in four(&work.join("g-staged")).iter().zip(four(&none).iter()) {
+        assert_eq!(
+            fs::read(a).unwrap(),
+            fs::read(b).unwrap(),
+            "default generator must equal --generator staged: {a:?} differs from {b:?}"
+        );
+    }
+
+    // --- --generator slic (out of set): clap rejects, exit 2, no output dir ---
+    let bad_out = work.join("g-invalid");
+    let bad = run(&bad_out, &["--generator", "slic"]);
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "out-of-set --generator must exit 2 (not panic=101 / signal=None); got {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "out-of-set --generator must be non-success"
+    );
+    let stderr = String::from_utf8_lossy(&bad.stderr).to_lowercase();
+    assert!(stderr.contains("possible values"));
+    assert!(stderr.contains("staged") && stderr.contains("gerstner"));
+    assert!(
+        !bad_out.exists(),
+        "out-of-set --generator must not create output path"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
 /// 4.3 — `--max-colors N` limits the output bead color count to ≤ N (exit 0,
 /// four non-empty files, summary color lines ≤ N); `--max-colors 0` exits
 /// non-zero (1, not panic=101) with a contextual stderr message. Same fixture

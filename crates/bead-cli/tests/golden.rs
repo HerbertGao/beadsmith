@@ -28,7 +28,8 @@ use std::path::{Path, PathBuf};
 
 use bead_core::pipeline::pattern_json;
 use bead_core::{
-    decode_image, generate_pattern, load_palette, total_beads, GenerateOptions, MatcherKind,
+    decode_image, generate_pattern, load_palette, total_beads, GenerateOptions, GeneratorKind,
+    MatcherKind,
 };
 
 /// A repo-root-relative path, resolved from the package manifest dir
@@ -59,6 +60,54 @@ fn fixed_result() -> bead_core::GenerateResult {
     };
     assert_eq!(opts.matcher, MatcherKind::Oklab);
     generate_pattern(&img_bytes, &palette, &opts).expect("generate_pattern on fixed input")
+}
+
+/// A small hand-built palette (inline JSON, loaded via `load_palette` — no `image`
+/// dev-dep needed) whose beads span the **dark** gamut of `samples/gradient.png`
+/// (its channels only reach ~[31, 39, 70], so `artkal_s` would snap the entire
+/// board to one near-black bead — a useless golden). These five dark beads spread
+/// across that gamut so the Gerstner superpixel centroids distribute across
+/// several beads, making the frozen output sensitive to the determinism mechanics
+/// (accumulation order, tie-break, drift) the golden must guard.
+const GERSTNER_PALETTE_JSON: &str = r##"{
+    "brand": "GerstnerGolden",
+    "colors": [
+        { "code": "K",  "name": "Ink",    "rgb": "#000000" },
+        { "code": "R",  "name": "Rust",   "rgb": "#1E0520" },
+        { "code": "G",  "name": "Moss",   "rgb": "#052628" },
+        { "code": "B",  "name": "Bright", "rgb": "#1E2644" },
+        { "code": "M",  "name": "Mud",    "rgb": "#0F1423" }
+    ]
+}"##;
+
+/// Gerstner golden fixture (tasks §7.4). Reuses the committed **synthetic**
+/// `samples/gradient.png` (a formula-built gradient, **not** a binary photo — the
+/// spec bans committed photo fixtures, which this is not) with a fixed small dark
+/// palette, `generator == Gerstner`, and defaults for everything else. 16×20 keeps
+/// `target ≤ source` (source 32×40, so `S_x = S_y = 2 ≥ 1`, satisfying Gerstner's
+/// upsampling guard) and reuses the 4:5 no-op crop. `bead-cli` has no `image`
+/// dev-dep (see the module header), so the source can't be hand-built here; the
+/// gradient is a synthetic stand-in that still forces seed drift across the T
+/// rounds (distinct per-pixel colors), which is what the golden must exercise.
+fn gerstner_palette() -> bead_core::Palette {
+    load_palette(GERSTNER_PALETTE_JSON.as_bytes()).expect("load_palette(GERSTNER_PALETTE_JSON)")
+}
+
+fn gerstner_opts() -> GenerateOptions {
+    GenerateOptions {
+        width: 16,
+        height: 20,
+        generator: GeneratorKind::Gerstner,
+        ..Default::default()
+    }
+}
+
+fn gerstner_result() -> bead_core::GenerateResult {
+    let img_bytes = fs::read(repo_root("samples/gradient.png")).expect("read samples/gradient.png");
+    let palette = gerstner_palette();
+    let opts = gerstner_opts();
+    assert_eq!(opts.matcher, MatcherKind::Oklab);
+    generate_pattern(&img_bytes, &palette, &opts).expect("Gerstner generate_pattern on fixed input")
 }
 
 /// Pure comparison — **does not read disk, does not consult `BLESS`** (design
@@ -254,6 +303,74 @@ fn golden_structure_all_platforms() {
         grid.get_pixel(118, 19).0,
         BOLD,
         "grid (118,19) must be the BOLD separator line"
+    );
+}
+
+/// §7.4 — Gerstner canonical byte freeze. Freezes `pattern.json` (which carries
+/// both `cells` and the derived `stats`) for the Gerstner path, gated exactly like
+/// the Staged golden: on canonical (arm64 Linux) it asserts byte equality against
+/// `tests/golden/gerstner_pattern.json`; elsewhere it is a self-gated no-op (the
+/// structural coverage below runs everywhere). The canonical golden is blessed on
+/// arm64 with `BLESS=1 cargo test -p bead-cli --test golden` (canonical-only — the
+/// f32 SLIC/Oklab path is same-machine deterministic, not cross-arch bit-exact),
+/// like every other committed golden. This freeze is what catches structural
+/// regressions (accumulation-order change, tie-flip) that a same-machine repeat
+/// test cannot — a self-consistent recompute stays self-consistent even if the
+/// output silently shifts.
+#[test]
+fn gerstner_golden_matches_canonical() {
+    let result = gerstner_result();
+    assert_golden("gerstner_pattern.json", pattern_json(&result).as_bytes());
+}
+
+/// §7.4 — Gerstner float-independent structural invariants (all platforms). Guards
+/// the shape/legality of the Gerstner board and, critically, that the Gerstner
+/// front end actually ran (its `cells` differ from the Staged path at the same
+/// size) — a cross-machine guard that does not depend on f32 ULP.
+#[test]
+fn gerstner_golden_structure_all_platforms() {
+    let result = gerstner_result();
+    let palette = gerstner_palette();
+
+    // shape: full board, every cell a legal palette index (never off-board / never
+    // an invented intermediate color).
+    assert_eq!(result.pattern.width, 16, "Gerstner pattern width");
+    assert_eq!(result.pattern.height, 20, "Gerstner pattern height");
+    assert_eq!(result.pattern.cells.len(), 320, "cells.len() == 16·20");
+    assert_eq!(total_beads(&result.pattern), 320, "total_beads == 320");
+    for &cell in &result.pattern.cells {
+        assert!(
+            (cell as usize) < palette.colors.len(),
+            "every Gerstner cell index must be < palette.colors.len() ({})",
+            palette.colors.len()
+        );
+    }
+
+    // not degenerate: the gradient source + spread dark palette must resolve to
+    // more than one bead color (a single-color board would signal the
+    // superpixel/snap collapsed).
+    let distinct = {
+        let mut v = result.pattern.cells.clone();
+        v.sort_unstable();
+        v.dedup();
+        v.len()
+    };
+    assert!(
+        distinct > 1,
+        "Gerstner board must use >1 distinct bead color on a gradient, got {distinct}"
+    );
+
+    // the Gerstner branch really ran: its board differs from the Staged board at
+    // the same size / palette / options. Float-independent (compares index Vecs).
+    let img_bytes = fs::read(repo_root("samples/gradient.png")).expect("read samples/gradient.png");
+    let staged_opts = GenerateOptions {
+        generator: GeneratorKind::Staged,
+        ..gerstner_opts()
+    };
+    let staged = generate_pattern(&img_bytes, &palette, &staged_opts).expect("staged run");
+    assert_ne!(
+        result.pattern.cells, staged.pattern.cells,
+        "Gerstner cells must differ from the Staged path (proving the branch executed)"
     );
 }
 

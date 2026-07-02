@@ -4,6 +4,7 @@
 use thiserror::Error;
 
 pub mod cleanup;
+pub mod gerstner;
 pub mod image;
 pub mod matcher;
 pub mod models;
@@ -14,6 +15,7 @@ pub mod renderer;
 pub mod statistics;
 
 pub use cleanup::despeckle;
+pub use gerstner::GeneratorKind;
 pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
 pub use matcher::{match_pattern, ColorMatcher, MatcherKind, OklabMatcher, RgbMatcher};
 pub use models::{BeadPattern, ColorStat, PixelGrid};

@@ -97,7 +97,9 @@ bead-core/
   ├─ image/
   ├─ palette/
   ├─ quantizer/
+  ├─ cleanup/
   ├─ matcher/
+  ├─ gerstner/
   ├─ renderer/
   ├─ statistics/
   ├─ models/
@@ -199,6 +201,28 @@ pub trait ColorMatcher {
 
 ---
 
+### gerstner Module
+
+The **opt-in** Gerstner generation front end (see *Generation Modes* below). A
+**deterministic SLIC-variant** superpixel pass that jointly downsamples + assigns
+a cropped source image into the `w×h` bead grid, then snaps each cell's Oklab
+cluster centroid to the fixed palette. Not a `ColorMatcher`/`Renderer` impl — a
+whole front end that replaces *crop→resize→per-pixel match* with *crop→superpixel
+assign*. Reuses the `matcher` module's `pub(crate)` `srgb_to_oklab`/`linearize`
+and the palette Oklab snapshot; the palette snap is an **Oklab-coordinate argmin**
+(cluster centroid → nearest bead, same ΔEok²/tie rule as `OklabMatcher`, but keyed
+on an Oklab coordinate rather than RGB — so it is a distinct argmin, not
+`find_best_match`). Compactness `m` and iteration count `T` are fixed compile-time
+constants (visually tuned, never runtime inputs, not in the CLI); the per-axis
+step `S_x = W/w`, `S_y = H/h` is a run-time-derived deterministic value.
+
+```rust
+pub enum GeneratorKind { Staged, Gerstner }   // Default == Staged
+pub(crate) fn superpixel_assign(...) -> Result<BeadPattern, BeadError>
+```
+
+---
+
 ### renderer Module
 
 Responsible for generating preview images.
@@ -235,32 +259,65 @@ pub fn generate_summary(...)
 Orchestrates the entire generation process. This is the main entry point.
 
 ```text
-Load Image
+⓪ Dimension guard (width>0 && height>0)   ← before the branch and decode
    ↓
-Resize
+① Front end — branch on opts.generator:
+     Staged  : Load Image → Crop → Resize  (→ PixelGrid)
+     Gerstner: Load Image → Crop           (→ cropped RgbImage)
    ↓
-Match Palette
+② Reducer fail-fast build (when max_colors set)
    ↓
-Reduce Bead Colors (optional; when max_colors is set)
+③ Coloring / assignment — branch on opts.generator:
+     Staged  : Match Palette (per-pixel matcher)
+     Gerstner: Superpixel assign + Oklab palette snap
+   ↓  (both branches now hold a full-board BeadPattern)
+④ Shared tail:
+   Reduce Bead Colors (optional; when max_colors is set)
    ↓
-Despeckle (optional; when despeckle is set)
+   Despeckle (optional; when despeckle is set)
    ↓
-Generate Statistics
-   ↓
-Render Preview
-   ↓
-Render Grid
-   ↓
-Return Result
+   Generate Statistics → Render Preview → Render Grid → Return Result
 ```
 
-Statistics and both rendered PNGs derive from the **reduced and (optionally) despeckled** `BeadPattern`.
+The two front ends diverge only in ① and ③; reduction, despeckle, statistics,
+and both renders are the **shared tail** (identical for both generators).
+Statistics and both rendered PNGs derive from the **reduced and (optionally)
+despeckled** `BeadPattern`.
 
 ```rust
 pub fn generate_pattern(...)
 ```
 
 All external callers should use this API.
+
+#### Generation Modes (`GeneratorKind`)
+
+`GenerateOptions.generator` selects the front end; `Default == Staged`, so the
+default path is byte-for-byte unchanged.
+
+- **`Staged` (default).** The staged crop → resize → per-pixel palette match path
+  (`image_to_grid` → matcher). Faithful "image to grid" resampling; the choice
+  for users who want the composition preserved.
+- **`Gerstner` (opt-in, photo-oriented).** Runs the `gerstner` module's
+  deterministic SLIC superpixel + Oklab palette-constrained snap instead of
+  resize + per-pixel match. Aimed at **photos / portraits / low bead counts**
+  where jointly optimizing downsample + assignment beats naïve area-average
+  resampling. It **deliberately abstracts / rearranges features** (the paper
+  itself notes caricature-like distortion), so it is **not** a faithful sampler —
+  flat cartoons see little benefit (thin outlines/text get abstracted away, like
+  despeckle). Both modes are **palette-constrained** (never invent an
+  intermediate color), share the same `GreedyReducer` `max_colors` reduction, and
+  are deterministic **same-machine** (f32 → canonical-only, same tier as
+  `OklabMatcher`; not cross-arch bit-exact).
+
+Guards: a top-level **dimension guard** (`width>0 && height>0`) runs before the
+branch and decode for both modes. Gerstner adds an **upsampling guard** — it
+requires `target ≤ source` after cropping (`S_x, S_y ≥ 1`) and returns
+`InvalidImage` otherwise (Staged may still upscale). **Performance (v1):**
+Gerstner is single-threaded and `O(source pixels × T)`, so large source images
+are slow — the mitigation is to pre-shrink the input; source-pixel clamping and
+`rayon` parallelism are deferred to Phase 2 (rayon must keep the fixed centroid
+accumulation order to preserve determinism).
 
 ---
 

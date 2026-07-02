@@ -4,8 +4,11 @@
 //! Zero business logic (CLAUDE rule 4): the bridge calls only `load_palette`,
 //! `generate_pattern`, and `pattern_json` — never an internal pipeline stage,
 //! and never re-assembles the image→match→stats→render flow. The M8 boundary is
-//! `width` / `height` only; `filter` / `cell_size` / `shape` / `matcher` are
-//! not caller options — they take the engine `Default` exactly as the CLI does.
+//! `width` / `height` only; `filter` / `cell_size` / `shape` / `matcher` /
+//! `generator` are not caller options — they take the engine `Default` exactly as
+//! the CLI does, so the FFI always runs the default **`Staged`** generator (the
+//! opt-in `Gerstner` path is not exposed across the boundary; the "CLI == FFI"
+//! gate only compares this default Staged path).
 
 use bead_core::pipeline::pattern_json;
 use bead_core::{generate_pattern, load_palette, GenerateOptions};
@@ -77,8 +80,9 @@ pub struct GenerateOutput {
 /// 1. `load_palette(palette_json.as_bytes())` — `load_palette` takes `&[u8]`, so
 ///    the JSON `String` is passed as its UTF-8 bytes,
 /// 2. builds `GenerateOptions { width, height, ..Default::default() }` — the
-///    **exact** construction the CLI uses (filter/cell_size/shape/matcher =
-///    engine default Triangle/10/Square/Oklab),
+///    **exact** construction the CLI uses (filter/cell_size/shape/matcher/generator
+///    = engine default Triangle/10/Square/Oklab/Staged; the opt-in Gerstner
+///    generator is deliberately not a boundary option),
 /// 3. calls `generate_pattern`, then `pattern_json` on the result.
 ///
 /// On any failure the `BeadError` is flattened to its `Display` string at the
