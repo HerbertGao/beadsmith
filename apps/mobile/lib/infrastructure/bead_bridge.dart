@@ -7,5 +7,5 @@
 // crate (out of scope). Drop this file the day `bead_ffi` exposes `bead_ffi.dart`.
 // ignore_for_file: implementation_imports
 export 'package:bead_ffi/src/api.dart'
-    show generate, GenerateOutput, BeadPattern, ColorStat;
+    show generate, GenerateOutput, BeadPattern, ColorStat, GeneratorKind;
 export 'package:bead_ffi/src/frb_generated.dart' show BeadFfi;

@@ -19,5 +19,10 @@ class PatternEngine {
         paletteJson: paletteJson,
         width: width,
         height: height,
+        // Behavior-preserving defaults: field-identical to the old engine
+        // default path. Settings-screen controls are a later workstream.
+        maxColors: null,
+        despeckle: null,
+        generator: ffi.GeneratorKind.staged,
       );
 }

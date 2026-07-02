@@ -11,14 +11,23 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Generate a complete bead pattern from image bytes + a palette JSON string.
 ///
-/// The M8 boundary is `width` / `height` only. The bridge:
+/// The boundary is `width` / `height` plus three optional engine options
+/// (`max_colors` / `despeckle` / `generator`). The bridge:
 /// 1. `load_palette(palette_json.as_bytes())` — `load_palette` takes `&[u8]`, so
 ///    the JSON `String` is passed as its UTF-8 bytes,
-/// 2. builds `GenerateOptions { width, height, ..Default::default() }` — the
-///    **exact** construction the CLI uses (filter/cell_size/shape/matcher/generator
-///    = engine default Triangle/10/Square/Oklab/Staged; the opt-in Gerstner
-///    generator is deliberately not a boundary option),
+/// 2. builds `GenerateOptions { width, height, max_colors, despeckle, generator,
+///    ..Default::default() }` — filter/cell_size/shape/matcher stay engine
+///    default (Triangle/10/Square/Oklab). When the three widened options are
+///    unset (`None`/`None`/`Staged`) this is field-identical to the old
+///    `{ width, height, ..Default::default() }`, so the default path is
+///    byte-for-byte unchanged,
 /// 3. calls `generate_pattern`, then `pattern_json` on the result.
+///
+/// The three options are forwarded verbatim — the bridge adds no reduction /
+/// despeckle / generation algorithm and no validation. `max_colors = Some(0)`
+/// is rejected by the engine (`GreedyReducer::new` → `BeadError::InvalidImage`),
+/// not here; `despeckle = Some(0)` is a legal no-op (the asymmetry is the
+/// engine's, not the bridge's).
 ///
 /// On any failure the `BeadError` is flattened to its `Display` string at the
 /// boundary (`.to_string()`) and returned as `Err(String)`; FRB raises it as a
@@ -29,12 +38,18 @@ Future<GenerateOutput> generate(
         {required List<int> imageBytes,
         required String paletteJson,
         required int width,
-        required int height}) =>
+        required int height,
+        int? maxColors,
+        int? despeckle,
+        required GeneratorKind generator}) =>
     BeadFfi.instance.api.crateApiGenerate(
         imageBytes: imageBytes,
         paletteJson: paletteJson,
         width: width,
-        height: height);
+        height: height,
+        maxColors: maxColors,
+        despeckle: despeckle,
+        generator: generator);
 
 /// FRB mirror of [`bead_core::BeadPattern`]. Fields mirror the real type
 /// (`width` / `height` / `cells`) — see `bead-core/src/models/mod.rs`.
@@ -151,4 +166,15 @@ class GenerateOutput {
           previewPng == other.previewPng &&
           gridPng == other.gridPng &&
           patternJson == other.patternJson;
+}
+
+/// FRB mirror of [`bead_core::GeneratorKind`]. Variants mirror the real enum
+/// (`Staged` | `Gerstner`) so FRB emits the Dart enum and marshals the Dart
+/// value back to the real `bead_core::GeneratorKind` — trivial value conversion
+/// (same nature as the CLI's `From<CliGenerator>`), no bridge logic and no
+/// `bead-core` change.
+enum GeneratorKind {
+  staged,
+  gerstner,
+  ;
 }

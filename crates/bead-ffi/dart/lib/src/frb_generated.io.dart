@@ -25,10 +25,19 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
   BeadPattern dco_decode_bead_pattern(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
   ColorStat dco_decode_color_stat(dynamic raw);
 
   @protected
   GenerateOutput dco_decode_generate_output(dynamic raw);
+
+  @protected
+  GeneratorKind dco_decode_generator_kind(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   List<ColorStat> dco_decode_list_color_stat(dynamic raw);
@@ -41,6 +50,9 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -58,10 +70,19 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
   BeadPattern sse_decode_bead_pattern(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   ColorStat sse_decode_color_stat(SseDeserializer deserializer);
 
   @protected
   GenerateOutput sse_decode_generate_output(SseDeserializer deserializer);
+
+  @protected
+  GeneratorKind sse_decode_generator_kind(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   List<ColorStat> sse_decode_list_color_stat(SseDeserializer deserializer);
@@ -76,6 +97,9 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_16(SseDeserializer deserializer);
 
   @protected
@@ -83,9 +107,6 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
@@ -97,11 +118,20 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
   void sse_encode_bead_pattern(BeadPattern self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_color_stat(ColorStat self, SseSerializer serializer);
 
   @protected
   void sse_encode_generate_output(
       GenerateOutput self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_generator_kind(GeneratorKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_color_stat(
@@ -119,6 +149,9 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
       Uint8List self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
@@ -126,9 +159,6 @@ abstract class BeadFfiApiImplPlatform extends BaseApiImpl<BeadFfiWire> {
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);

@@ -85,12 +85,18 @@ void main() {
   final repoRoot = repoRootDir.path;
 
   final gradientPng = File('$repoRoot/samples/gradient.png');
+  // Multi-color fixture (committed; regen via test/gen_rich_fixture.py) for the
+  // option-forwarding cases: gradient.png collapses to a single color at the gate
+  // sizes, which would make --max-colors/--despeckle/--generator no-ops (vacuous).
+  final richPng =
+      File('$repoRoot/crates/bead-ffi/dart/test/rich_fixture.png');
   final paletteJsonFile = File('$repoRoot/palettes/artkal_s.json');
   final dylib = _hostDylib(repoRoot);
   final cargo = _which('cargo');
 
   final missing = <String>[
     if (!gradientPng.existsSync()) 'samples/gradient.png',
+    if (!richPng.existsSync()) 'crates/bead-ffi/dart/test/rich_fixture.png',
     if (!paletteJsonFile.existsSync()) 'palettes/artkal_s.json',
     if (dylib == null) 'host dylib (cargo build -p bead-ffi)',
     if (cargo == null) 'cargo on PATH',
@@ -109,125 +115,226 @@ void main() {
     await BeadFfi.init(externalLibrary: ExternalLibrary.open(dylib!.path));
   });
 
-  final imageBytes = gradientPng.readAsBytesSync();
   final paletteJson = paletteJsonFile.readAsStringSync();
 
+  /// Run one gate case: FFI `generate` with the given options, same-machine
+  /// `bead-cli generate` with the equivalent flags, then raw-byte compare the
+  /// four named files and self-check `pattern_json` vs the FRB structured fields.
+  /// [label] tags failures; [inputFile] is the source image (gradient for the
+  /// unset default path, the rich fixture for the option cases); [cliFlags] are
+  /// the extra CLI flags mirroring the FFI options (empty for the unset path).
+  /// When [assertDiffersFromUnset] is set, the option-carrying output is compared
+  /// against the SAME fixture run with options unset (null/null/staged) and MUST
+  /// differ — the anti-vacuity guard: if an option were dropped the outputs would
+  /// match and this fails, so the case can never silently go vacuous.
+  Future<void> runGate({
+    required String label,
+    required File inputFile,
+    required int width,
+    required int height,
+    int? maxColors,
+    int? despeckle,
+    required GeneratorKind generator,
+    required List<String> cliFlags,
+    bool assertDiffersFromUnset = false,
+  }) async {
+    final imageBytes = inputFile.readAsBytesSync();
+
+    // 1. FFI generate.
+    final out = await generate(
+      imageBytes: imageBytes,
+      paletteJson: paletteJson,
+      width: width,
+      height: height,
+      maxColors: maxColors,
+      despeckle: despeckle,
+      generator: generator,
+    );
+
+    // Anti-vacuity backstop: the option-carrying output must differ from the
+    // unset (null/null/staged) output on the SAME fixture, proving at least one
+    // option took effect (so the fixture isn't degenerate). Per-option isolation
+    // — a single dropped option — is caught by the byte-for-byte FFI-vs-CLI
+    // compare below (identical flags) and the Rust forwarding tests, not here.
+    if (assertDiffersFromUnset) {
+      final unset = await generate(
+        imageBytes: imageBytes,
+        paletteJson: paletteJson,
+        width: width,
+        height: height,
+        maxColors: null,
+        despeckle: null,
+        generator: GeneratorKind.staged,
+      );
+      expect(out.patternJson, isNot(equals(unset.patternJson)),
+          reason: 'options-set output must differ from unset ($label); '
+              'equality here means a forwarded option was ignored (vacuous)');
+    }
+
+    // 2. Same-machine CLI run into an isolated temp dir.
+    final tmp = Directory.systemTemp.createTempSync('beadsmith_gate_$label');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final cliResult = Process.runSync(
+      cargo!,
+      [
+        'run',
+        '-q',
+        '-p',
+        'bead-cli',
+        '--',
+        'generate',
+        '--input',
+        inputFile.path,
+        '--palette',
+        paletteJsonFile.path,
+        '--width',
+        '$width',
+        '--height',
+        '$height',
+        '--output',
+        tmp.path,
+        ...cliFlags,
+      ],
+      workingDirectory: repoRoot,
+    );
+    expect(
+      cliResult.exitCode,
+      0,
+      reason: 'bead-cli generate ($label) failed:\n'
+          'stdout: ${cliResult.stdout}\nstderr: ${cliResult.stderr}',
+    );
+
+    // 3. RAW-BYTE compare the four named files (no newline normalization).
+    //    summary.txt: CLI writes result.summary verbatim (core already put the
+    //    trailing newline there) — Dart must NOT append one.
+    _expectBytesEqual(
+      File('${tmp.path}/pattern.json').readAsBytesSync(),
+      utf8.encode(out.patternJson),
+      'pattern.json ($label)',
+    );
+    _expectBytesEqual(
+      File('${tmp.path}/summary.txt').readAsBytesSync(),
+      utf8.encode(out.summary),
+      'summary.txt ($label)',
+    );
+    _expectBytesEqual(
+      File('${tmp.path}/preview.png').readAsBytesSync(),
+      out.previewPng,
+      'preview.png ($label)',
+    );
+    _expectBytesEqual(
+      File('${tmp.path}/grid.png').readAsBytesSync(),
+      out.gridPng,
+      'grid.png ($label)',
+    );
+
+    // (cross-aspect-ratio sanity: the structured size really tracks the call)
+    expect(out.pattern.width, width,
+        reason: 'bridge must forward width ($label)');
+    expect(out.pattern.height, height,
+        reason: 'bridge must forward height ($label)');
+
+    // 4. Parse patternJson and self-check 5 fields against the STRUCTURED values
+    //    Dart received via FRB. JSON-side values come from PARSING the string,
+    //    NOT from re-serializing the structured arrays.
+    final parsed = jsonDecode(out.patternJson) as Map<String, dynamic>;
+
+    expect(parsed['width'], out.pattern.width,
+        reason: 'patternJson.width vs structured ($label)');
+    expect(parsed['height'], out.pattern.height,
+        reason: 'patternJson.height vs structured ($label)');
+    expect(parsed['brand'], out.brand,
+        reason: 'patternJson.brand vs structured ($label)');
+
+    // cells: parsed JSON int list == structured Uint16List, element-wise.
+    final parsedCells = (parsed['cells'] as List).map((e) => e as int).toList();
+    expect(parsedCells, out.pattern.cells.toList(),
+        reason: 'patternJson.cells vs structured ($label)');
+
+    // stats: parsed {code,name,count} list == structured ColorStat list.
+    // Index-paired (not keyed by code) on purpose: stats order is load-bearing
+    // — pattern.json is byte-compared above, so its stats order is pinned to
+    // the engine's `Vec` order, and the FRB-structured `out.stats` is that same
+    // Vec marshalled. A divergent marshalling order would mismatch here and FAIL
+    // (it can't be masked); a consistent order is exactly what the gate requires.
+    final parsedStats = (parsed['stats'] as List)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+    expect(parsedStats.length, out.stats.length,
+        reason: 'stats length mismatch ($label)');
+    for (var i = 0; i < parsedStats.length; i++) {
+      final pj = parsedStats[i];
+      final st = out.stats[i];
+      expect(pj['code'], st.code,
+          reason: 'stats[$i].code vs structured ($label)');
+      expect(pj['name'], st.name,
+          reason: 'stats[$i].name vs structured ($label)');
+      expect(pj['count'], st.count,
+          reason: 'stats[$i].count vs structured ($label)');
+    }
+  }
+
+  // The pre-existing unset-path gate at both default sizes. Three widened
+  // options unset (null/null/staged) is field-identical to the engine default,
+  // so this must still align the CLI default path (no --matcher/--max-colors/
+  // --despeckle/--generator flags) byte-for-byte — the gate does not regress.
   for (final size in _sizes) {
     final w = size.width;
     final h = size.height;
-
-    test('CLI == FFI byte-for-byte @ ${w}x$h', () async {
-      // 1. FFI generate.
-      final out = await generate(
-        imageBytes: imageBytes,
-        paletteJson: paletteJson,
+    test('CLI == FFI byte-for-byte @ ${w}x$h (unset defaults)', () async {
+      await runGate(
+        label: '${w}x$h',
+        inputFile: gradientPng,
         width: w,
         height: h,
+        maxColors: null,
+        despeckle: null,
+        generator: GeneratorKind.staged,
+        cliFlags: const [],
       );
-
-      // 2. Same-machine CLI run into an isolated temp dir.
-      final tmp = Directory.systemTemp.createTempSync('beadsmith_gate_${w}x$h');
-      addTearDown(() => tmp.deleteSync(recursive: true));
-
-      final cliResult = Process.runSync(
-        cargo!,
-        [
-          'run',
-          '-q',
-          '-p',
-          'bead-cli',
-          '--',
-          'generate',
-          '--input',
-          gradientPng.path,
-          '--palette',
-          paletteJsonFile.path,
-          '--width',
-          '$w',
-          '--height',
-          '$h',
-          '--output',
-          tmp.path,
-        ],
-        workingDirectory: repoRoot,
-      );
-      expect(
-        cliResult.exitCode,
-        0,
-        reason: 'bead-cli generate @ ${w}x$h failed:\n'
-            'stdout: ${cliResult.stdout}\nstderr: ${cliResult.stderr}',
-      );
-
-      // 3. RAW-BYTE compare the four named files (no newline normalization).
-      //    summary.txt: CLI writes result.summary verbatim (core already put the
-      //    trailing newline there) — Dart must NOT append one.
-      _expectBytesEqual(
-        File('${tmp.path}/pattern.json').readAsBytesSync(),
-        utf8.encode(out.patternJson),
-        'pattern.json @ ${w}x$h',
-      );
-      _expectBytesEqual(
-        File('${tmp.path}/summary.txt').readAsBytesSync(),
-        utf8.encode(out.summary),
-        'summary.txt @ ${w}x$h',
-      );
-      _expectBytesEqual(
-        File('${tmp.path}/preview.png').readAsBytesSync(),
-        out.previewPng,
-        'preview.png @ ${w}x$h',
-      );
-      _expectBytesEqual(
-        File('${tmp.path}/grid.png').readAsBytesSync(),
-        out.gridPng,
-        'grid.png @ ${w}x$h',
-      );
-
-      // (cross-aspect-ratio sanity: the structured size really tracks the call)
-      expect(out.pattern.width, w, reason: 'bridge must forward width @ ${w}x$h');
-      expect(out.pattern.height, h,
-          reason: 'bridge must forward height @ ${w}x$h');
-
-      // 4. Parse patternJson and self-check 5 fields against the STRUCTURED values
-      //    Dart received via FRB. JSON-side values come from PARSING the string,
-      //    NOT from re-serializing the structured arrays.
-      final parsed = jsonDecode(out.patternJson) as Map<String, dynamic>;
-
-      expect(parsed['width'], out.pattern.width,
-          reason: 'patternJson.width vs structured @ ${w}x$h');
-      expect(parsed['height'], out.pattern.height,
-          reason: 'patternJson.height vs structured @ ${w}x$h');
-      expect(parsed['brand'], out.brand,
-          reason: 'patternJson.brand vs structured @ ${w}x$h');
-
-      // cells: parsed JSON int list == structured Uint16List, element-wise.
-      final parsedCells =
-          (parsed['cells'] as List).map((e) => e as int).toList();
-      expect(parsedCells, out.pattern.cells.toList(),
-          reason: 'patternJson.cells vs structured @ ${w}x$h');
-
-      // stats: parsed {code,name,count} list == structured ColorStat list.
-      // Index-paired (not keyed by code) on purpose: stats order is load-bearing
-      // — pattern.json is byte-compared above, so its stats order is pinned to
-      // the engine's `Vec` order, and the FRB-structured `out.stats` is that same
-      // Vec marshalled. A divergent marshalling order would mismatch here and FAIL
-      // (it can't be masked); a consistent order is exactly what the gate requires.
-      final parsedStats = (parsed['stats'] as List)
-          .map((e) => e as Map<String, dynamic>)
-          .toList();
-      expect(parsedStats.length, out.stats.length,
-          reason: 'stats length mismatch @ ${w}x$h');
-      for (var i = 0; i < parsedStats.length; i++) {
-        final pj = parsedStats[i];
-        final st = out.stats[i];
-        expect(pj['code'], st.code,
-            reason: 'stats[$i].code vs structured @ ${w}x$h');
-        expect(pj['name'], st.name,
-            reason: 'stats[$i].name vs structured @ ${w}x$h');
-        expect(pj['count'], st.count,
-            reason: 'stats[$i].count vs structured @ ${w}x$h');
-      }
     });
   }
+
+  // Options-set case: max_colors + despeckle on the default `staged` path must
+  // align `bead-cli generate --max-colors 8 --despeckle 2` byte-for-byte
+  // (integer despeckle path + host-stable f32 reduction), proving both options
+  // are forwarded and unchanged by the bridge. Runs on the rich fixture (>8
+  // matched colors + a <=2-bead speckle) so both options are non-vacuous, and
+  // asserts the output differs from the unset run on the same fixture. The
+  // structured-vs-pattern_json self-check inside runGate applies here too.
+  test('CLI == FFI byte-for-byte @ 16x20 (max_colors=8, despeckle=2)', () async {
+    await runGate(
+      label: '16x20_mc8_ds2',
+      inputFile: richPng,
+      width: 16,
+      height: 20,
+      maxColors: 8,
+      despeckle: 2,
+      generator: GeneratorKind.staged,
+      cliFlags: const ['--max-colors', '8', '--despeckle', '2'],
+      assertDiffersFromUnset: true,
+    );
+  });
+
+  // generator=gerstner: same-machine alignment with `bead-cli generate
+  // --generator gerstner` (f32 path, host-canonical only — not cross-target
+  // byte-exact). Proves the mirror enum maps and forwards into GenerateOptions.
+  // Runs on the rich fixture and asserts gerstner output differs from the unset
+  // (staged) run on the same fixture, so a gerstner→staged mis-map cannot pass.
+  test('CLI == FFI byte-for-byte @ 16x20 (generator=gerstner)', () async {
+    await runGate(
+      label: '16x20_gerstner',
+      inputFile: richPng,
+      width: 16,
+      height: 20,
+      maxColors: null,
+      despeckle: null,
+      generator: GeneratorKind.gerstner,
+      cliFlags: const ['--generator', 'gerstner'],
+      assertDiffersFromUnset: true,
+    );
+  });
 }
 
 /// Locate an executable on PATH, returning its name (Process.run resolves it) or

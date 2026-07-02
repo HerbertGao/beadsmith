@@ -84,7 +84,10 @@ abstract class BeadFfiApi extends BaseApi {
       {required List<int> imageBytes,
       required String paletteJson,
       required int width,
-      required int height});
+      required int height,
+      int? maxColors,
+      int? despeckle,
+      required GeneratorKind generator});
 }
 
 class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
@@ -100,7 +103,10 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
       {required List<int> imageBytes,
       required String paletteJson,
       required int width,
-      required int height}) {
+      required int height,
+      int? maxColors,
+      int? despeckle,
+      required GeneratorKind generator}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -108,6 +114,9 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
         sse_encode_String(paletteJson, serializer);
         sse_encode_u_32(width, serializer);
         sse_encode_u_32(height, serializer);
+        sse_encode_opt_box_autoadd_u_32(maxColors, serializer);
+        sse_encode_opt_box_autoadd_u_32(despeckle, serializer);
+        sse_encode_generator_kind(generator, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
             funcId: 1, port: port_);
       },
@@ -116,14 +125,30 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
         decodeErrorData: sse_decode_String,
       ),
       constMeta: kCrateApiGenerateConstMeta,
-      argValues: [imageBytes, paletteJson, width, height],
+      argValues: [
+        imageBytes,
+        paletteJson,
+        width,
+        height,
+        maxColors,
+        despeckle,
+        generator
+      ],
       apiImpl: this,
     ));
   }
 
   TaskConstMeta get kCrateApiGenerateConstMeta => const TaskConstMeta(
         debugName: "generate",
-        argNames: ["imageBytes", "paletteJson", "width", "height"],
+        argNames: [
+          "imageBytes",
+          "paletteJson",
+          "width",
+          "height",
+          "maxColors",
+          "despeckle",
+          "generator"
+        ],
       );
 
   @protected
@@ -143,6 +168,12 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
       height: dco_decode_u_32(arr[1]),
       cells: dco_decode_list_prim_u_16_strict(arr[2]),
     );
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -176,6 +207,18 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   }
 
   @protected
+  GeneratorKind dco_decode_generator_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return GeneratorKind.values[raw as int];
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   List<ColorStat> dco_decode_list_color_stat(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_color_stat).toList();
@@ -197,6 +240,12 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
   }
 
   @protected
@@ -234,6 +283,12 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   }
 
   @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
+  }
+
+  @protected
   ColorStat sse_decode_color_stat(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_code = sse_decode_String(deserializer);
@@ -260,6 +315,19 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
         previewPng: var_previewPng,
         gridPng: var_gridPng,
         patternJson: var_patternJson);
+  }
+
+  @protected
+  GeneratorKind sse_decode_generator_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return GeneratorKind.values[inner];
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -296,6 +364,17 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   }
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   int sse_decode_u_16(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint16();
@@ -311,12 +390,6 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
-  }
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -340,6 +413,12 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
+  }
+
+  @protected
   void sse_encode_color_stat(ColorStat self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.code, serializer);
@@ -358,6 +437,18 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
     sse_encode_list_prim_u_8_strict(self.previewPng, serializer);
     sse_encode_list_prim_u_8_strict(self.gridPng, serializer);
     sse_encode_String(self.patternJson, serializer);
+  }
+
+  @protected
+  void sse_encode_generator_kind(GeneratorKind self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -396,6 +487,16 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_u_16(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint16(self);
@@ -411,12 +512,6 @@ class BeadFfiApiImpl extends BeadFfiApiImplPlatform implements BeadFfiApi {
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 
   @protected
