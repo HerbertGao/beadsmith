@@ -177,6 +177,31 @@ engineering, not part of this milestone's gate).
 
 ---
 
+## Post-M9 — Engine Algorithm Upgrades
+
+Phase 2/3 algorithm work, slotted in *behind the existing traits*
+(`ColorMatcher` / `BeadReducer`) and the `pipeline` generation seam **without
+reordering M0–M9**. All spec-driven via OpenSpec, deterministic, CLI-validated;
+the default `Staged` output and its golden are unchanged unless noted.
+
+- **Oklab matcher** ✅ — `OklabMatcher` (Oklab + ΔEok²) under `ColorMatcher`;
+  `--matcher rgb|lab|oklab`, default `oklab`.
+- **Palette-aware reduction** ✅ — `GreedyReducer` (`BeadReducer` trait) merges to
+  `≤N` bead colors *after* matching (`--max-colors`), replacing the earlier
+  pre-match quantizer; default resize filter moved to `Triangle`.
+- **Despeckle** ✅ — connected-component cleanup of isolated specks
+  (`--despeckle <min-region>`); pure integer, cross-arch bit-exact.
+- **Gerstner generation mode** ✅ — opt-in deterministic SLIC-variant superpixel
+  front end (`--generator staged|gerstner`) for photo/portrait drafts; default
+  stays `Staged`.
+- **Dithering** — deferred (algorithm Phase 4, off by default; negative for
+  solid beads).
+
+> Canonical byte golden is enforced on arm64 Linux CI; the f32 paths (`Triangle`,
+> `Oklab`, `Gerstner`) are **same-machine canonical**, not cross-arch bit-exact.
+
+---
+
 ## Notes
 
 - **Determinism is a gate, not a nicety.** Every milestone from M2 on must
@@ -184,5 +209,6 @@ engineering, not part of this milestone's gate).
   tests (M7) and the "CLI == FFI" check (M8) possible.
 - **The CLI is the contract.** If M9's app ever disagrees with `bead-cli`, the
   bug is in the shell, not the engine.
-- Phase 2 algorithm work (color reduction, CIELAB/Delta E, dithering) slots in
-  *behind the existing traits* after M9 without reordering this roadmap.
+- Phase 2/3 algorithm work (color reduction, Oklab/ΔE, despeckle, Gerstner) has
+  landed *behind the existing traits* after M9 without reordering this roadmap
+  (see **Post-M9**); dithering remains deferred (algorithm Phase 4).
