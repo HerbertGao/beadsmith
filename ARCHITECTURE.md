@@ -73,7 +73,8 @@ requested.
 Scope (clarified at M7): "identical output for identical input" is
 **per-platform / per-architecture / per-`image`-version**. Pure-integer paths
 (`RgbMatcher`, statistics, renderer geometry) are bit-identical across
-architectures; the floating-point paths — the `Lanczos3` resize (its weights run
+architectures; the floating-point paths — the resize filter (default `Triangle`,
+f32 weights; other filters such as `Lanczos3` also run f32 weights, e.g.
 `f32::sin`) and the default `OklabMatcher` (plus `LabMatcher`, both with
 `cbrt`/`powf`) — are **not** guaranteed bit-identical across architectures /
 libm. Golden byte-freezing is therefore canonical-only on arm64 Linux (CI
@@ -138,14 +139,19 @@ pub fn validate_palette(...)
 
 ### quantizer Module
 
-Responsible for reducing colors.
+Responsible for reducing bead colors. Reduction runs **after** matching, on the
+matched `BeadPattern` (not on the raw pixel grid), and is **palette-aware**: it
+merges the least-used bead colors into the perceptually nearest retained bead
+colors and remaps their cells, so merges only ever flow between **real palette
+beads** — never inventing intermediate colors.
 
 - **Phase 1:** not enabled
-- **Phase 2:** Median Cut (`MedianCutQuantizer`) — implemented as the default; K-Means (future)
+- **Phase 2+:** greedy least-used merge (`GreedyReducer`) — implemented as the
+  default reducer behind the `BeadReducer` seam
 
 ```rust
-pub trait Quantizer {
-    fn quantize(...)
+pub trait BeadReducer {
+    fn reduce(&self, pattern: &BeadPattern) -> BeadPattern
 }
 ```
 
@@ -207,18 +213,20 @@ Load Image
    ↓
 Resize
    ↓
-Quantize
-   ↓
 Match Palette
    ↓
-Generate Grid
+Reduce Bead Colors (optional; when max_colors is set)
    ↓
 Generate Statistics
    ↓
 Render Preview
    ↓
+Render Grid
+   ↓
 Return Result
 ```
+
+Statistics and both rendered PNGs derive from the **reduced** `BeadPattern`.
 
 ```rust
 pub fn generate_pattern(...)
@@ -394,7 +402,7 @@ Use `thiserror` inside core. Expose `Result<T, BeadError>` everywhere.
 Future algorithms should be swappable via traits:
 
 ```rust
-pub trait Quantizer
+pub trait BeadReducer
 pub trait ColorMatcher
 pub trait Renderer
 ```

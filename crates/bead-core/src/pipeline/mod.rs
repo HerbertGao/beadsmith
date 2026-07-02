@@ -21,7 +21,7 @@ use crate::matcher::{
 };
 use crate::models::{BeadPattern, ColorStat};
 use crate::palette::Palette;
-use crate::quantizer::{MedianCutQuantizer, Quantizer};
+use crate::quantizer::{BeadReducer, GreedyReducer};
 use crate::renderer::{render_grid, render_preview, RenderOptions};
 use crate::statistics::{count_colors, generate_summary, total_beads};
 use crate::BeadError;
@@ -33,14 +33,14 @@ use crate::BeadError;
 /// Plain `Default` (no `#[non_exhaustive]`, design D3): callers construct it
 /// with struct-update syntax, e.g. `GenerateOptions { width, height,
 /// ..Default::default() }`. `max_colors` defaults to `None` (no color
-/// reduction — the grid passes through to matching verbatim), and `matcher`
-/// defaults to [`MatcherKind::Oklab`]. `Some(n)` runs [`MedianCutQuantizer`]
-/// after `image_to_grid` and before `match_pattern`, reducing the grid to ≤`n`
-/// representative colors. `Some(0)` is rejected inside `generate_pattern` by
-/// `MedianCutQuantizer::new` (reuses `BeadError::InvalidImage`, no new
-/// variant), not by `GenerateOptions` itself.
+/// reduction — the matched pattern passes through verbatim), and `matcher`
+/// defaults to [`MatcherKind::Oklab`]. `Some(n)` runs [`GreedyReducer`]
+/// **after** `match_pattern`, merging the matched pattern down to ≤`n` distinct
+/// bead colors. `Some(0)` is rejected inside `generate_pattern` by
+/// `GreedyReducer::new` (reuses `BeadError::InvalidImage`, no new variant), not
+/// by `GenerateOptions` itself.
 // ponytail: Default 的 0×0 非「能跑配置」、是 ..default() 填充便利；维度非法由 image_to_grid 既有 0-守卫干净返 Err、不 panic。
-// derive(Default) 即产 width:0/height:0/resize:Default(Lanczos3)/render:Default(cell_size 10)/max_colors:None/matcher:Default(Oklab)，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
+// derive(Default) 即产 width:0/height:0/resize:Default(Triangle)/render:Default(cell_size 10)/max_colors:None/matcher:Default(Oklab)，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GenerateOptions {
     /// Target grid width in cells.
@@ -51,10 +51,11 @@ pub struct GenerateOptions {
     pub resize: ResizeOptions,
     /// How the pattern is rendered to PNG (cell size, shape).
     pub render: RenderOptions,
-    /// Optional Phase-2 color reduction: `Some(n)` reduces the grid to ≤`n`
-    /// representative colors via [`MedianCutQuantizer`] before color matching;
-    /// `None` (the default) skips the stage so the grid reaches matching
-    /// verbatim (byte-identical to the pre-reduction pipeline).
+    /// Optional Phase-2 color reduction: `Some(n)` merges the matched pattern
+    /// down to ≤`n` distinct bead colors via [`GreedyReducer`] **after** color
+    /// matching; `None` (the default) skips the stage so the matched pattern is
+    /// used verbatim (identical to removing the reduction stage under the same
+    /// `opts`).
     pub max_colors: Option<u32>,
     /// Matcher implementation used for color matching. Defaults to Oklab.
     pub matcher: MatcherKind,
@@ -87,29 +88,36 @@ pub struct GenerateResult {
 
 /// Generate a complete bead pattern from image bytes + a palette, in one call.
 ///
-/// Faithfully chains the existing primitives in a fixed order, threading the
-/// **same** `palette` through matcher, statistics, and renderer (the
-/// single-`Palette` invariant, design D1). The fixed order is:
-/// `image_to_grid` → optional color reduction (when `opts.max_colors ==
-/// Some(n)`, `MedianCutQuantizer::new(n)?.quantize(&grid)`; when `None`, the
-/// stage is skipped and the grid is passed through verbatim — byte-identical
-/// to the pre-reduction pipeline) → selected matcher (`RgbMatcher`,
-/// `LabMatcher`, or default `OklabMatcher`) → `match_pattern` →
-/// `count_colors` / `generate_summary` → `render_preview` / `render_grid`.
-/// Errors from any stage propagate via `?` as their existing [`BeadError`]
-/// variant — no new variant is introduced (design D7). In
-/// particular `opts.max_colors == Some(0)` surfaces `MedianCutQuantizer::new`'s
-/// `Err(InvalidImage { reason })` (reason mentions "max_colors"), before any
-/// matching or rendering.
+/// Faithfully chains the existing primitives in a fixed **fail-fast** order,
+/// threading the **same** `palette` through matcher, statistics, and renderer
+/// (the single-`Palette` invariant, design D1). The fixed order is:
+/// `image_to_grid` → **reducer fail-fast construction** (when `opts.max_colors
+/// == Some(n)`, `GreedyReducer::new(palette, opts.matcher, n)?` is built
+/// **before** the matcher, so `max_colors == 0`'s `InvalidImage` precedes the
+/// matcher's `InvalidPalette`; `None` builds nothing) → selected matcher
+/// (`RgbMatcher`, `LabMatcher`, or default `OklabMatcher`) → `match_pattern` →
+/// **optional reduction** (when `Some(n)`, `reducer.reduce(&pattern)` on the
+/// matched pattern; `None` leaves it verbatim) → `count_colors` /
+/// `generate_summary` → `render_preview` / `render_grid`. Statistics and both
+/// PNGs derive from the (possibly reduced) pattern. Errors from any stage
+/// propagate via `?` as their existing [`BeadError`] variant — no new variant
+/// is introduced (design D7). In particular `opts.max_colors == Some(0)`
+/// surfaces `GreedyReducer::new`'s `Err(InvalidImage { reason })` (reason
+/// mentions "max_colors"), before any matching or rendering.
 pub fn generate_pattern(
     image_bytes: &[u8],
     palette: &Palette,
     opts: &GenerateOptions,
 ) -> Result<GenerateResult, BeadError> {
     let grid = image_to_grid(image_bytes, opts.width, opts.height, &opts.resize)?;
-    let grid = match opts.max_colors {
-        Some(n) => MedianCutQuantizer::new(n)?.quantize(&grid),
-        None => grid,
+    // Fail-fast: when reducing, build the reducer BEFORE the matcher so that
+    // `max_colors == 0` surfaces `InvalidImage` ahead of the matcher's
+    // `InvalidPalette` (`GreedyReducer::new` validates `max_colors >= 1` before
+    // the palette). `None` skips construction entirely. See pipeline spec error
+    // priority.
+    let reducer = match opts.max_colors {
+        Some(n) => Some(GreedyReducer::new(palette, opts.matcher, n)?),
+        None => None,
     };
     let matcher: Box<dyn ColorMatcher> = match opts.matcher {
         MatcherKind::Rgb => Box::new(RgbMatcher::new(palette)?),
@@ -117,6 +125,13 @@ pub fn generate_pattern(
         MatcherKind::Oklab => Box::new(OklabMatcher::new(palette)?),
     };
     let pattern = match_pattern(&grid, matcher.as_ref());
+    // Optional bead-color reduction runs AFTER matching, on the matched pattern
+    // (design D1): `None` leaves the pattern verbatim. Stats/summary/both PNGs
+    // below all derive from this (possibly reduced) pattern.
+    let pattern = match reducer {
+        Some(r) => r.reduce(&pattern),
+        None => pattern,
+    };
     let stats = count_colors(&pattern, palette);
     let summary = generate_summary(&pattern, palette);
     let preview_png = render_preview(&pattern, palette, &opts.render)?;
@@ -713,8 +728,9 @@ mod tests {
     }
 
     // max_colors == Some(0): generate_pattern returns Err(InvalidImage) with a
-    // reason mentioning "max_colors" (surfaced from MedianCutQuantizer::new),
-    // and does not panic (spec "max_colors==0 返回确定性 Err 而非 panic").
+    // reason mentioning "max_colors" (surfaced from GreedyReducer::new, built
+    // before the matcher), and does not panic (spec "max_colors==0 返回确定性
+    // Err 而非 panic（先于配色）").
     #[test]
     fn max_colors_zero_rejected() {
         let palette = demo_palette();
@@ -736,14 +752,48 @@ mod tests {
         }
     }
 
-    // max_colors == Some(n) below the grid's distinct-color count: the resulting
-    // distinct bead colors (stats.len()) must be ≤ n (upper-bound semantics —
-    // spec "Some(n) 小于全色时 stats 的不同色数 ≤ n").
+    // Valid image + illegal palette + max_colors == Some(0): the max_colors
+    // InvalidImage wins over the palette's InvalidPalette, because the reducer
+    // (which checks max_colors>=1 before the palette) is constructed before the
+    // matcher (spec "有效图 + 非法 palette + max_colors==0 优先命中 max_colors").
+    #[test]
+    fn max_colors_zero_precedes_invalid_palette() {
+        let bytes = demo_png(16, 16);
+        let empty_palette = Palette {
+            brand: "Empty".to_string(),
+            colors: vec![],
+        };
+        for matcher in [MatcherKind::Rgb, MatcherKind::Lab, MatcherKind::Oklab] {
+            let opts = GenerateOptions {
+                width: 8,
+                height: 8,
+                max_colors: Some(0),
+                matcher,
+                ..Default::default()
+            };
+            let err = generate_pattern(&bytes, &empty_palette, &opts)
+                .expect_err("max_colors == Some(0) must be rejected before palette");
+            match err {
+                BeadError::InvalidImage { reason } => assert!(
+                    reason.contains("max_colors"),
+                    "reason must mention max_colors for matcher {matcher:?}, got: {reason:?}"
+                ),
+                other => panic!(
+                    "expected InvalidImage (not InvalidPalette) for matcher {matcher:?}, got {other:?}"
+                ),
+            }
+        }
+    }
+
+    // max_colors == Some(n) below the matched pattern's distinct bead-color
+    // count: reduction runs AFTER matching, on the matched pattern. stats/pattern
+    // derive from the reduced pattern and the distinct bead colors (stats.len())
+    // must be ≤ n (spec "Some(n) 时统计与渲染基于减色后的 pattern").
     #[test]
     fn max_colors_bounds_distinct_stats() {
         let palette = demo_palette();
-        // Use a grid that is visibly richer than the reduction bound so the
-        // test proves the quantizer path is actually exercised.
+        // Four quadrant colors -> the matcher lands on ≥ n distinct beads, so the
+        // post-match reduction stage is actually exercised.
         let (w, h) = (12u32, 12u32);
         let img = ::image::RgbImage::from_fn(w, h, |x, y| {
             let px = match (x < w / 2, y < h / 2) {
@@ -766,41 +816,43 @@ mod tests {
             max_colors: Some(n),
             ..Default::default()
         };
+
+        let distinct = |cells: &[u16]| {
+            let mut v = cells.to_vec();
+            v.sort_unstable();
+            v.dedup();
+            v.len()
+        };
+
+        // Re-run the fixed order manually WITHOUT then WITH the post-match
+        // reduction, proving the stage is observable and the pipeline reduces.
         let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
-        let raw_distinct = {
-            let mut pixels = grid.pixels.clone();
-            pixels.sort_unstable();
-            pixels.dedup();
-            pixels.len()
-        };
-        assert!(
-            raw_distinct > n as usize,
-            "fixture must exceed max_colors before quantization, got {raw_distinct}"
-        );
-
-        let quantizer = MedianCutQuantizer::new(n).expect("valid quantizer");
-        let quantized_grid = quantizer.quantize(&grid);
-        let quantized_distinct = {
-            let mut pixels = quantized_grid.pixels.clone();
-            pixels.sort_unstable();
-            pixels.dedup();
-            pixels.len()
-        };
-        assert!(
-            quantized_distinct <= n as usize,
-            "quantized grid must be reduced to <= {n} colors, got {quantized_distinct}"
-        );
-
         let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
-        let expected = match_pattern(&quantized_grid, matcher.as_ref());
-        let baseline = match_pattern(&grid, matcher.as_ref());
+        let matched = match_pattern(&grid, matcher.as_ref());
+        assert!(
+            distinct(&matched.cells) > n as usize,
+            "fixture must exceed max_colors after matching, got {}",
+            distinct(&matched.cells)
+        );
+        let reducer = GreedyReducer::new(&palette, opts.matcher, n).expect("valid reducer");
+        let expected = reducer.reduce(&matched);
+        assert!(
+            distinct(&expected.cells) <= n as usize,
+            "reduced pattern must be <= {n} distinct beads, got {}",
+            distinct(&expected.cells)
+        );
         assert_ne!(
-            expected, baseline,
+            expected, matched,
             "fixture must make the reduction stage observable"
         );
 
-        let result = generate_pattern(&bytes, &palette, &opts).expect("quantized run succeeds");
+        let result = generate_pattern(&bytes, &palette, &opts).expect("reduced run succeeds");
         assert_eq!(result.pattern, expected);
+        assert_eq!(
+            result.stats,
+            count_colors(&expected, &palette),
+            "stats must derive from the reduced pattern"
+        );
         assert!(
             result.stats.len() <= n as usize,
             "stats.len() ({}) must be <= max_colors ({n})",

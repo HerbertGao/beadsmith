@@ -17,7 +17,7 @@ pub use matcher::{match_pattern, ColorMatcher, MatcherKind, OklabMatcher, RgbMat
 pub use models::{BeadPattern, ColorStat, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
 pub use pipeline::{generate_pattern, GenerateOptions, GenerateResult};
-pub use quantizer::{MedianCutQuantizer, Quantizer};
+pub use quantizer::{BeadReducer, GreedyReducer};
 pub use renderer::{render_grid, render_preview, BeadShape, RenderOptions};
 pub use statistics::{count_colors, generate_summary, total_beads};
 

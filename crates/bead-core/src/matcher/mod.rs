@@ -46,7 +46,7 @@ pub enum MatcherKind {
 /// boundary is exact: legal indices are `0..=65535` (`u16::MAX == 65535`), so
 /// `len == 65536` is accepted and `65537` is the first rejected length. Never
 /// panics.
-fn check_palette_len(palette: &Palette) -> Result<(), BeadError> {
+pub(crate) fn check_palette_len(palette: &Palette) -> Result<(), BeadError> {
     if palette.colors.is_empty() {
         return Err(BeadError::InvalidPalette {
             reason: "matcher: palette has no colors".to_string(),
@@ -113,7 +113,7 @@ impl ColorMatcher for RgbMatcher {
     }
 }
 
-fn linearize(rgb: [u8; 3]) -> [f32; 3] {
+pub(crate) fn linearize(rgb: [u8; 3]) -> [f32; 3] {
     let lin = |c: u8| -> f32 {
         let c = c as f32 / 255.0;
         if c <= 0.04045 {
@@ -133,7 +133,7 @@ fn linearize(rgb: [u8; 3]) -> [f32; 3] {
 /// `mul_add` / FMA** (a fused multiply-add could codegen-diverge between the CLI
 /// binary and the FFI staticlib/cdylib and break same-machine byte equality,
 /// T4). For any `[u8; 3]` every step is finite, so the result never has a NaN.
-fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
+pub(crate) fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
     // 1) channel /255 then inverse-gamma linearize into linear-light sRGB.
     let [r, g, b] = linearize(rgb);
 
@@ -169,7 +169,7 @@ fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
 ///
 /// Uses Bjorn Ottosson's standard linear-sRGB -> LMS -> cbrt -> Oklab
 /// matrices, with the same inverse-gamma linearization as [`srgb_to_lab`].
-fn srgb_to_oklab(rgb: [u8; 3]) -> [f32; 3] {
+pub(crate) fn srgb_to_oklab(rgb: [u8; 3]) -> [f32; 3] {
     let [r, g, b] = linearize(rgb);
 
     let l = 0.412_221_46 * r + 0.536_332_55 * g + 0.051_445_994 * b;

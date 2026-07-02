@@ -78,7 +78,7 @@ pub struct GenerateOutput {
 ///    the JSON `String` is passed as its UTF-8 bytes,
 /// 2. builds `GenerateOptions { width, height, ..Default::default() }` — the
 ///    **exact** construction the CLI uses (filter/cell_size/shape/matcher =
-///    engine default Lanczos3/10/Square/Oklab),
+///    engine default Triangle/10/Square/Oklab),
 /// 3. calls `generate_pattern`, then `pattern_json` on the result.
 ///
 /// On any failure the `BeadError` is flattened to its `Display` string at the

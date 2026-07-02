@@ -5,7 +5,7 @@
 //! synthesized in-bench (same formula as M6's `demo_png`), never committed as
 //! large fixtures. The synthesized source image is **2× the target on each
 //! axis**: a source equal to the target hits `imageops::resize`'s "src == dst"
-//! copy short-circuit, which would skip the Lanczos resample and make the
+//! copy short-circuit, which would skip the Triangle resample and make the
 //! benchmark miss the resize cost entirely.
 //!
 //! ponytail: 测库入口 generate_pattern 端到端（M8/FFI 与 CLI 真调的东西）；
@@ -46,7 +46,7 @@ fn bench_generate_pattern(c: &mut Criterion) {
     let mut group = c.benchmark_group("generate_pattern");
 
     for (w, h) in TARGET_SIZES {
-        // Source = 2× target on each axis, so the Lanczos resample actually runs
+        // Source = 2× target on each axis, so the Triangle resample actually runs
         // (a src == dst source would hit the resize copy short-circuit).
         let png_bytes = demo_png(2 * w, 2 * h);
         let opts = GenerateOptions {

@@ -41,7 +41,7 @@ rules:
     - 遵循 ARCHITECTURE.md 五条硬规则；bead-core 不得引入 UI / 文件系统 /
       剪贴板 / 平台（Flutter/iOS/Android）依赖
     - 决策段每条含「替代方案」+「否决理由」
-    - 可替换算法一律走 trait（Quantizer / ColorMatcher / Renderer），新增实现
+    - 可替换算法一律走 trait（BeadReducer / ColorMatcher / Renderer），新增实现
       不改 pipeline::generate_pattern 主流程
     - 默认禁随机；确需随机性必须显式声明并提供确定性路径（固定种子等）
     - 统计 / 预览 / 导出只能从 BeadPattern 派生，绝不从渲染图反推

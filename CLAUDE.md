@@ -53,7 +53,7 @@ cargo run -p bead-cli -- --help
 
 - Errors: `thiserror` in core, expose `Result<T, BeadError>`. `anyhow` in the
   CLI only.
-- Future algorithms slot in behind traits (`Quantizer`, `ColorMatcher`,
+- Future algorithms slot in behind traits (`BeadReducer`, `ColorMatcher`,
   `Renderer`) without touching the pipeline.
 - Performance: single-threaded through Phase 1; `rayon` arrives in Phase 2.
 - Spec-driven changes go through OpenSpec (`openspec/`).

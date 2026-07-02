@@ -25,7 +25,9 @@ use crate::BeadError;
 ///
 /// `filter` is the external `image` crate's [`FilterType`]; it leaks into this
 /// public signature deliberately, in exchange for primitive reuse (see design
-/// D3). The default is `Lanczos3` (design D2).
+/// D3). The default is `Triangle` (design D6: low-lobe / near area-average, no
+/// negative-lobe ringing); `filter` stays configurable — callers can set it
+/// back to `Lanczos3` or any other `FilterType`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResizeOptions {
     /// Resampling filter used when scaling to the target grid.
@@ -35,7 +37,7 @@ pub struct ResizeOptions {
 impl Default for ResizeOptions {
     fn default() -> Self {
         ResizeOptions {
-            filter: FilterType::Lanczos3,
+            filter: FilterType::Triangle,
         }
     }
 }
@@ -159,7 +161,7 @@ pub fn crop_center(src: &RgbImage, tw: u32, th: u32) -> Result<RgbImage, BeadErr
 /// Resizes `src` to an exact `width × height` `PixelGrid` (aspect ratio is
 /// **not** preserved — callers crop first). Upscaling (target larger than
 /// source) is allowed. Uses [`::image::imageops::resize`] with
-/// `options.filter` (default `Lanczos3`).
+/// `options.filter` (default `Triangle`, see design D6).
 ///
 /// Note: `DynamicImage::resize_exact` is *not* available on `RgbImage`; only
 /// the `imageops::resize` free function is (see design D6′).
@@ -298,8 +300,9 @@ mod tests {
         assert_eq!(a, b);
 
         // Inline golden uses Nearest (integer-exact, no f32) so the hardcoded
-        // expectation is bit-exact across architectures — NOT Lanczos3's f32
-        // output. 160×200 → 4×5 is a 4:5-to-4:5 (no-op crop) Nearest downscale.
+        // expectation is bit-exact across architectures — NOT the default
+        // Triangle's f32 output. 160×200 → 4×5 is a 4:5-to-4:5 (no-op crop)
+        // Nearest downscale.
         let grid = image_to_grid(GRADIENT_PNG, 4, 5, &nearest()).unwrap();
         assert_eq!(grid.width, 4);
         assert_eq!(grid.height, 5);
@@ -606,7 +609,20 @@ mod tests {
     // ---- 6.9 default filter --------------------------------------------------
 
     #[test]
-    fn default_filter_is_lanczos3() {
-        assert_eq!(ResizeOptions::default().filter, FilterType::Lanczos3);
+    fn default_filter_is_triangle() {
+        // Default resampling filter is Triangle (design D6): low-lobe, no
+        // negative-lobe ringing.
+        assert_eq!(ResizeOptions::default().filter, FilterType::Triangle);
+    }
+
+    #[test]
+    fn filter_is_configurable_override_default() {
+        // The default can be overridden — callers may set it back to Lanczos3
+        // (or any other FilterType).
+        let opts = ResizeOptions {
+            filter: FilterType::Lanczos3,
+        };
+        assert_eq!(opts.filter, FilterType::Lanczos3);
+        assert_ne!(opts.filter, ResizeOptions::default().filter);
     }
 }
