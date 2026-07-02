@@ -44,6 +44,9 @@ enum Command {
         /// Limit the pattern to at most N bead colors (e.g. 24/36/48/72).
         #[arg(long)]
         max_colors: Option<u32>,
+        /// Clean up isolated same-color regions of at most N beads (0 = no-op).
+        #[arg(long)]
+        despeckle: Option<u32>,
     },
     /// Palette subcommands.
     Palette {
@@ -79,8 +82,9 @@ fn main() -> Result<()> {
             matcher,
             output,
             max_colors,
+            despeckle,
         } => generate(
-            &input, &palette, width, height, matcher, &output, max_colors,
+            &input, &palette, width, height, matcher, &output, max_colors, despeckle,
         ),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
@@ -96,6 +100,9 @@ fn main() -> Result<()> {
     }
 }
 
+// ponytail: thin CLI passthrough — flags map 1:1 to GenerateOptions; a params
+// struct here would be pure ceremony. Group them if a 9th flag ever lands.
+#[allow(clippy::too_many_arguments)]
 fn generate(
     input: &Path,
     palette: &Path,
@@ -104,6 +111,7 @@ fn generate(
     matcher: CliMatcher,
     output: &Path,
     max_colors: Option<u32>,
+    despeckle: Option<u32>,
 ) -> Result<()> {
     let img_bytes =
         fs::read(input).with_context(|| format!("failed to read input image {input:?}"))?;
@@ -117,6 +125,7 @@ fn generate(
         height,
         matcher: matcher.into(),
         max_colors,
+        despeckle,
         ..Default::default()
     };
     let result =

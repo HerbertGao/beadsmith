@@ -15,6 +15,7 @@
 //! in-memory data (pattern, stats, summary, PNG bytes) and a serialized JSON
 //! `String`. Persisting any of it is the frontend's job.
 
+use crate::cleanup::despeckle;
 use crate::image::{image_to_grid, ResizeOptions};
 use crate::matcher::{
     match_pattern, ColorMatcher, LabMatcher, MatcherKind, OklabMatcher, RgbMatcher,
@@ -40,7 +41,7 @@ use crate::BeadError;
 /// `GreedyReducer::new` (reuses `BeadError::InvalidImage`, no new variant), not
 /// by `GenerateOptions` itself.
 // ponytail: Default 的 0×0 非「能跑配置」、是 ..default() 填充便利；维度非法由 image_to_grid 既有 0-守卫干净返 Err、不 panic。
-// derive(Default) 即产 width:0/height:0/resize:Default(Triangle)/render:Default(cell_size 10)/max_colors:None/matcher:Default(Oklab)，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
+// derive(Default) 即产 width:0/height:0/resize:Default(Triangle)/render:Default(cell_size 10)/max_colors:None/matcher:Default(Oklab)/despeckle:None，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GenerateOptions {
     /// Target grid width in cells.
@@ -59,6 +60,12 @@ pub struct GenerateOptions {
     pub max_colors: Option<u32>,
     /// Matcher implementation used for color matching. Defaults to Oklab.
     pub matcher: MatcherKind,
+    /// Optional connected-component despeckling (see [`crate::cleanup::despeckle`]):
+    /// `Some(s)` merges same-color 4-connected components of ≤`s` beads into
+    /// their majority neighbor color **after** reduction; `Some(0)` is a legal
+    /// no-op; `None` (the default) skips the stage so the pattern passes through
+    /// verbatim (default output is byte-for-byte unchanged).
+    pub despeckle: Option<u32>,
 }
 
 /// The full result of [`generate_pattern`]: the source-of-truth pattern, its
@@ -97,9 +104,11 @@ pub struct GenerateResult {
 /// matcher's `InvalidPalette`; `None` builds nothing) → selected matcher
 /// (`RgbMatcher`, `LabMatcher`, or default `OklabMatcher`) → `match_pattern` →
 /// **optional reduction** (when `Some(n)`, `reducer.reduce(&pattern)` on the
-/// matched pattern; `None` leaves it verbatim) → `count_colors` /
-/// `generate_summary` → `render_preview` / `render_grid`. Statistics and both
-/// PNGs derive from the (possibly reduced) pattern. Errors from any stage
+/// matched pattern; `None` leaves it verbatim) → **optional despeckle** (when
+/// `opts.despeckle == Some(s)`, `despeckle(&pattern, s)` on the reduced pattern;
+/// `None` leaves it verbatim) → `count_colors` / `generate_summary` →
+/// `render_preview` / `render_grid`. Statistics and both PNGs derive from the
+/// (possibly reduced, possibly despeckled) pattern. Errors from any stage
 /// propagate via `?` as their existing [`BeadError`] variant — no new variant
 /// is introduced (design D7). In particular `opts.max_colors == Some(0)`
 /// surfaces `GreedyReducer::new`'s `Err(InvalidImage { reason })` (reason
@@ -130,6 +139,16 @@ pub fn generate_pattern(
     // below all derive from this (possibly reduced) pattern.
     let pattern = match reducer {
         Some(r) => r.reduce(&pattern),
+        None => pattern,
+    };
+    // Optional connected-component despeckling runs AFTER reduction, on the final
+    // pattern (design D5): `None` leaves it verbatim (default output unchanged).
+    // Total on a legal pattern → no new `BeadError` variant. Only remaps between
+    // already-used adjacent colors, so it never grows the distinct-color count —
+    // `max_colors`'s ≤N bound still holds. Stats/summary/both PNGs below all
+    // derive from this despeckled pattern.
+    let pattern = match opts.despeckle {
+        Some(s) => despeckle(&pattern, s),
         None => pattern,
     };
     let stats = count_colors(&pattern, palette);
@@ -273,6 +292,7 @@ mod tests {
         assert_eq!(opts.max_colors, None);
         assert_eq!(MatcherKind::default(), MatcherKind::Oklab);
         assert_eq!(opts.matcher, MatcherKind::Oklab);
+        assert_eq!(opts.despeckle, None);
     }
 
     #[test]
@@ -858,5 +878,125 @@ mod tests {
             "stats.len() ({}) must be <= max_colors ({n})",
             result.stats.len()
         );
+    }
+
+    // ---- 5.6 ------------------------------------------------------------------
+
+    fn distinct(cells: &[u16]) -> usize {
+        let mut v = cells.to_vec();
+        v.sort_unstable();
+        v.dedup();
+        v.len()
+    }
+
+    // despeckle == None: the despeckle stage is an identity skip, so the result
+    // is byte-for-byte equal to the manual chain WITHOUT the stage (default
+    // output unchanged — spec "despeckle==None 逐字节不变").
+    #[test]
+    fn despeckle_none_matches_no_despeckle_stage() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = demo_png(24, 24);
+        let opts = GenerateOptions {
+            width: w,
+            height: h,
+            despeckle: None,
+            ..Default::default()
+        };
+
+        let result = generate_pattern(&bytes, &palette, &opts).expect("none must succeed");
+
+        // Manual chain, no despeckle stage.
+        let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
+        let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
+        let matched = match_pattern(&grid, matcher.as_ref());
+
+        assert_eq!(result.pattern, matched);
+        assert_eq!(result.stats, count_colors(&matched, &palette));
+        assert_eq!(result.summary, generate_summary(&matched, &palette));
+        assert_eq!(
+            result.preview_png,
+            render_preview(&matched, &palette, &opts.render).expect("preview")
+        );
+        assert_eq!(
+            result.grid_png,
+            render_grid(&matched, &palette, &opts.render).expect("grid png")
+        );
+    }
+
+    // despeckle == Some(s): stats/summary/both PNGs all derive from the
+    // despeckled pattern (spec "Some(s) 时统计/渲染来自去斑后 pattern").
+    #[test]
+    fn despeckle_some_derives_from_cleaned_pattern() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = demo_png(24, 24);
+        // A large threshold forces the gradient's small components to merge, so
+        // the stage is observably exercised.
+        let s = w * h;
+        let opts = GenerateOptions {
+            width: w,
+            height: h,
+            despeckle: Some(s),
+            ..Default::default()
+        };
+
+        let result = generate_pattern(&bytes, &palette, &opts).expect("despeckle run succeeds");
+
+        let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
+        let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
+        let matched = match_pattern(&grid, matcher.as_ref());
+        let cleaned = despeckle(&matched, s);
+
+        assert_eq!(result.pattern, cleaned);
+        assert_eq!(result.stats, count_colors(&cleaned, &palette));
+        assert_eq!(result.summary, generate_summary(&cleaned, &palette));
+        assert_eq!(
+            result.preview_png,
+            render_preview(&cleaned, &palette, &opts.render).expect("preview")
+        );
+        assert_eq!(
+            result.grid_png,
+            render_grid(&cleaned, &palette, &opts.render).expect("grid png")
+        );
+        // despeckle never invents colors → never grows the distinct-color count.
+        assert!(distinct(&cleaned.cells) <= distinct(&matched.cells));
+    }
+
+    // max_colors == Some(n) AND despeckle == Some(s): the final distinct
+    // bead-color count is still ≤ n (despeckle only merges into already-used
+    // adjacent colors — spec "与 max_colors 同用时最终不同珠色数仍 ≤ n").
+    #[test]
+    fn despeckle_with_max_colors_stays_within_bound() {
+        let palette = demo_palette();
+        let (w, h) = (12u32, 12u32);
+        let bytes = demo_png(24, 24);
+        let n = 3u32;
+        let s = w * h;
+        let opts = GenerateOptions {
+            width: w,
+            height: h,
+            max_colors: Some(n),
+            despeckle: Some(s),
+            ..Default::default()
+        };
+
+        let result = generate_pattern(&bytes, &palette, &opts).expect("combined run succeeds");
+
+        // Result equals reduce-then-despeckle of the matched pattern.
+        let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
+        let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
+        let matched = match_pattern(&grid, matcher.as_ref());
+        let reducer = GreedyReducer::new(&palette, opts.matcher, n).expect("valid reducer");
+        let reduced = reducer.reduce(&matched);
+        let cleaned = despeckle(&reduced, s);
+
+        assert_eq!(result.pattern, cleaned);
+        assert!(
+            distinct(&result.pattern.cells) <= n as usize,
+            "final distinct colors ({}) must stay <= max_colors ({n})",
+            distinct(&result.pattern.cells)
+        );
+        assert!(result.stats.len() <= n as usize);
     }
 }

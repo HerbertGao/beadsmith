@@ -157,6 +157,32 @@ pub trait BeadReducer {
 
 ---
 
+### cleanup Module
+
+Optional **spatial post-processing** on the final `BeadPattern` (a family; first
+member: connected-component **despeckle**). `despeckle` merges small same-color
+4-connected components (bead count ≤ `min_region`) into their **majority
+neighbor color** — pure-integer, **input-snapshot** (order-independent), never
+invents colors. It runs **after** reduction, is **opt-in** (default off), and is
+a **library/reuse primitive, not a generation entry** (Rule 4).
+
+```rust
+pub fn despeckle(pattern: &BeadPattern, min_region: u32) -> BeadPattern
+```
+
+Unlike reduction, despeckle is a **free function, not a `BeadReducer` trait
+impl** — deliberate: it operates on a different axis (spatial topology, not
+color count), never touches color coordinates, needs no palette, is pure-integer
+(cross-arch bit-exact, vs the f32 canonical-only reducer/matcher), and
+`min_region == 0` is a meaningful no-op (whereas `max_colors == 0` is invalid).
+A single-impl `PatternCleaner` trait would be a speculative seam; extract a
+shared post-processing seam only if a third spatial step (e.g. min-island,
+smoothing) arrives. **Despeckle is photo-noise oriented**: on flat cartoons its
+thin intentional features (outlines, text) are themselves small components, so
+it degrades detail — hence opt-in / default-off (see design tradeoff note).
+
+---
+
 ### matcher Module
 
 Maps image colors to real bead colors. One of the most important modules.
@@ -217,6 +243,8 @@ Match Palette
    ↓
 Reduce Bead Colors (optional; when max_colors is set)
    ↓
+Despeckle (optional; when despeckle is set)
+   ↓
 Generate Statistics
    ↓
 Render Preview
@@ -226,7 +254,7 @@ Render Grid
 Return Result
 ```
 
-Statistics and both rendered PNGs derive from the **reduced** `BeadPattern`.
+Statistics and both rendered PNGs derive from the **reduced and (optionally) despeckled** `BeadPattern`.
 
 ```rust
 pub fn generate_pattern(...)

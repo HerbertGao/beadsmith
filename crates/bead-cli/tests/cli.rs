@@ -340,6 +340,89 @@ fn cli_max_colors_ok_and_zero_rejected() {
     let _ = fs::remove_dir_all(&work);
 }
 
+/// 4.2 — `--despeckle N` (N >= 1) exits 0 and writes four non-empty files;
+/// `--despeckle 0` is a legal no-op producing output byte-identical to omitting
+/// the flag; a non-`u32` value (e.g. `x`) is rejected by clap with exit code 2
+/// (not panic=101), and no output dir is created. Same fixture/no-deps style.
+#[test]
+fn cli_despeckle_flag_ok_zero_noop_and_non_u32_rejected() {
+    let work = scratch("cli-despeckle");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    let run = |out: &Path, extra: &[&str]| {
+        let mut cmd = Command::new(BIN);
+        cmd.args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(out)
+            .args(extra);
+        cmd.output().expect("run generate")
+    };
+
+    let four = |out: &Path| {
+        [
+            out.join("preview.png"),
+            out.join("grid.png"),
+            out.join("pattern.json"),
+            out.join("summary.txt"),
+        ]
+    };
+
+    // --- --despeckle 1: exit 0, four non-empty files -------------------------
+    let out1 = work.join("d1");
+    let r1 = run(&out1, &["--despeckle", "1"]);
+    assert!(
+        r1.status.success(),
+        "generate --despeckle 1 must exit 0; stderr: {}",
+        String::from_utf8_lossy(&r1.stderr)
+    );
+    for f in four(&out1) {
+        let meta = fs::metadata(&f).unwrap_or_else(|e| panic!("missing {f:?}: {e}"));
+        assert!(meta.len() > 0, "{f:?} must be non-empty");
+    }
+
+    // --- --despeckle 0 == omitting the flag (legal no-op, byte-identical) ----
+    let out0 = work.join("d0");
+    let none = work.join("dnone");
+    let r0 = run(&out0, &["--despeckle", "0"]);
+    let rn = run(&none, &[]);
+    assert!(r0.status.success(), "generate --despeckle 0 must exit 0");
+    assert!(
+        rn.status.success(),
+        "generate without --despeckle must exit 0"
+    );
+    for (a, b) in four(&out0).iter().zip(four(&none).iter()) {
+        assert_eq!(
+            fs::read(a).unwrap(),
+            fs::read(b).unwrap(),
+            "--despeckle 0 must be a no-op: {a:?} differs from {b:?}"
+        );
+    }
+
+    // --- --despeckle x (non-u32): clap rejects, exit 2, no output dir --------
+    let bad_out = work.join("dbad");
+    let bad = run(&bad_out, &["--despeckle", "x"]);
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "non-u32 --despeckle must exit 2 (not panic=101 / signal=None); got {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "non-u32 --despeckle must be non-success"
+    );
+    assert!(
+        !bad_out.exists(),
+        "non-u32 --despeckle must not create output path"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
 /// 6.8 — filesystem failures exit non-zero (never panic) with path context.
 /// Two representative cases (write-side: --output is an existing plain file;
 /// read-side: --input does not exist); parent-not-writable / disk-full share
