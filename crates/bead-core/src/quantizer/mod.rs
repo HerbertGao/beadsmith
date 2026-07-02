@@ -185,7 +185,7 @@ impl BeadReducer for GreedyReducer {
 
         // `rep[i]` = current representative for original palette color `i`.
         // Merging chains collapse through it, so output stays valid indices.
-        let mut rep: Vec<u16> = (0..n as u16).collect();
+        let mut rep: Vec<u16> = (0..n).map(|i| i as u16).collect();
 
         while d > self.max_colors {
             // Sacrifice: least-used in-use color; tie → LARGER index. Scanning

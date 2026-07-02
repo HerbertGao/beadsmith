@@ -165,7 +165,24 @@ pub fn generate_pattern(
         )?),
         GeneratorKind::Gerstner => {
             let decoded = decode_image(image_bytes)?;
-            Front::Gerstner(crop_center(&decoded, opts.width, opts.height)?)
+            let cropped = crop_center(&decoded, opts.width, opts.height)?;
+            // Upsampling guard at stage ① (before ② reducer / ③ palette match) so
+            // the spec's error priority holds: a Gerstner target>source
+            // `InvalidImage` precedes `max_colors==0` and `InvalidPalette` (both of
+            // which would otherwise fire first at ②/③). The identical guard inside
+            // `superpixel_assign` stays as defense-in-depth for direct callers.
+            if cropped.width() < opts.width || cropped.height() < opts.height {
+                return Err(BeadError::InvalidImage {
+                    reason: format!(
+                        "Gerstner requires target <= source (S >= 1): target {}x{} exceeds cropped source {}x{}",
+                        opts.width,
+                        opts.height,
+                        cropped.width(),
+                        cropped.height()
+                    ),
+                });
+            }
+            Front::Gerstner(cropped)
         }
     };
     // ② Fail-fast: when reducing, build the reducer AFTER preprocessing and
@@ -1168,6 +1185,61 @@ mod tests {
                     "expected InvalidImage (not InvalidPalette) for {generator:?}, got {other:?}"
                 ),
             }
+        }
+    }
+
+    // Regression for the Fix-1 hoist: a Gerstner target LARGER than the cropped
+    // source trips the stage-① upsampling guard, which must win over both the
+    // reducer's max_colors==0 InvalidImage (②) and the matcher's InvalidPalette
+    // (③). Source 8x8 with a 16x16 target: crop_center is a same-ratio no-op, so
+    // cropped stays 8x8 < 16x16 and the guard fires.
+    #[test]
+    fn gerstner_upsampling_guard_precedes_max_colors_and_palette() {
+        let bytes = quadrant_png(8, 8); // decodable; smaller than the 16x16 target
+
+        // (a) max_colors == Some(0): the Gerstner upsampling error wins over the
+        // reducer's max_colors error.
+        let opts_zero = GenerateOptions {
+            width: 16,
+            height: 16,
+            max_colors: Some(0),
+            generator: GeneratorKind::Gerstner,
+            ..Default::default()
+        };
+        match generate_pattern(&bytes, &demo_palette(), &opts_zero)
+            .expect_err("upsampling guard must reject before max_colors")
+        {
+            BeadError::InvalidImage { reason } => {
+                assert!(
+                    reason.contains("Gerstner"),
+                    "reason must name the Gerstner constraint, got: {reason:?}"
+                );
+                assert!(
+                    !reason.contains("max_colors"),
+                    "reason must not come from max_colors, got: {reason:?}"
+                );
+            }
+            other => panic!("expected InvalidImage (Gerstner guard), got {other:?}"),
+        }
+
+        // (b) empty palette + max_colors == None: the Gerstner upsampling error
+        // wins over the matcher's InvalidPalette.
+        let empty_palette = Palette {
+            brand: "Empty".to_string(),
+            colors: vec![],
+        };
+        let opts_palette = GenerateOptions {
+            width: 16,
+            height: 16,
+            max_colors: None,
+            generator: GeneratorKind::Gerstner,
+            ..Default::default()
+        };
+        match generate_pattern(&bytes, &empty_palette, &opts_palette)
+            .expect_err("upsampling guard must reject before palette match")
+        {
+            BeadError::InvalidImage { .. } => {}
+            other => panic!("expected InvalidImage (not InvalidPalette), got {other:?}"),
         }
     }
 

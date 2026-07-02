@@ -365,10 +365,14 @@ mod tests {
     // reproducible (fixed tie-break → smallest seed index).
     #[test]
     fn gerstner_every_pixel_assigned_after_drift() {
-        // A gradient with distinct pixels forces seeds to move across the T
-        // rounds; the original-grid-anchored candidate set must still cover every
-        // pixel, so no cell is left undefined.
-        let img = gradient_img(30, 18);
+        // A wide-range horizontal red->blue ramp: per-column variation forces
+        // seeds to drift across the T rounds, and (unlike a near-black gradient)
+        // the R/G/B/K/W palette can actually distinguish the ends — so a collapsed
+        // or gap-leaving assignment shows up as a single distinct cell below.
+        let img = RgbImage::from_fn(30, 18, |x, _| {
+            let t = (x * 255 / 29) as u8;
+            Rgb([255 - t, 0, t])
+        });
         let palette = rgb_bw_palette();
         let (w, h) = (5u32, 3u32);
         let pat = superpixel_assign(&img, &palette, w, h).expect("must generate");
@@ -378,6 +382,13 @@ mod tests {
                 .iter()
                 .all(|&c| (c as usize) < palette.colors.len()),
             "no undefined/out-of-board cell after seed drift"
+        );
+        // Assignment-sensitive: the ramp must resolve to more than one palette
+        // color; a broken assignment (all pixels folding into one cluster) would
+        // collapse this to a single distinct cell.
+        assert!(
+            pat.cells.iter().any(|&c| c != pat.cells[0]),
+            "ramp input must yield more than one distinct cell (assignment varies, not collapsed)"
         );
         // reproducible (deterministic tie-break).
         let again = superpixel_assign(&img, &palette, w, h).expect("again");
