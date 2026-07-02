@@ -62,9 +62,8 @@ pub struct GenerateOptions {
     /// Matcher implementation used for color matching. Defaults to Oklab.
     pub matcher: MatcherKind,
     /// Which generation front end to use. Defaults to [`GeneratorKind::Staged`]
-    /// (the staged crop→resize→match path, byte-for-byte unchanged). The
-    /// `generate_pattern` branch on this is wired in a later task group; adding
-    /// the field here keeps the default path untouched.
+    /// (the staged crop→resize→match path, byte-for-byte unchanged);
+    /// [`GeneratorKind::Gerstner`] opts into the superpixel path.
     pub generator: GeneratorKind,
     /// Optional connected-component despeckling (see [`crate::cleanup::despeckle`]):
     /// `Some(s)` merges same-color 4-connected components of ≤`s` beads into

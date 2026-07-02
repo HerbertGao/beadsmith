@@ -1,7 +1,7 @@
 # tests/golden/
 
 Committed byte golden masters that freeze the current default engine's output
-(`Lanczos3` resize + `OklabMatcher`; milestone M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
+(`Triangle` resize + `OklabMatcher`; milestone M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
 executable CI gate: an intentional algorithm change — or a dependency bump that
 changes output bytes — fails loudly here instead of drifting silently.
 
@@ -17,7 +17,7 @@ The golden masters are produced from a single fixed input + fixed settings.
 Changing any of these changes the masters — the settings are part of the golden.
 
 - **Fixture:** `samples/gradient.png` — a committed 32x40 image.
-- **Resize:** to **16x20**, filter **Lanczos3** (the real engine default — the
+- **Resize:** to **16x20**, filter **Triangle** (the real engine default — the
   path users actually get; not a stand-in like `Nearest`).
 - **Cell size:** `cell_size 10`.
 - **Matcher:** `MatcherKind::default() == Oklab`.
@@ -42,10 +42,10 @@ test's `BLESS` regeneration path (see `crates/bead-cli/tests/golden.rs`):
 ## Canonical platform: arm64 Linux
 
 The byte masters are valid **only on the canonical platform (arm64 Linux; CI
-reference runner = `ubuntu-24.04-arm`)**. The `Lanczos3` resize path and the
+reference runner = `ubuntu-24.04-arm`)**. The `Triangle` resize path and the
 default `OklabMatcher` (Oklab + ΔEok²) run floating-point math whose cross-platform
-/ cross-architecture bit-for-bit result is not guaranteed (the resize weight
-kernel goes through `f32::sin` and the matcher through `cbrt`/`powf`, neither
+/ cross-architecture bit-for-bit result is not guaranteed (the resize uses `f32`
+interpolation weights and the matcher goes through `cbrt`/`powf`, neither
 specified to be identical across architectures / libm implementations). arm64 is
 chosen because the engine's production target is mobile arm64 (iOS / Android),
 and Apple Silicon dev machines can bless via a *native* arm64 container (no

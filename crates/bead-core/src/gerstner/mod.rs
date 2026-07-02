@@ -54,11 +54,17 @@ pub(crate) fn superpixel_assign(
     width: u32,
     height: u32,
 ) -> Result<BeadPattern, BeadError> {
-    check_palette_len(palette)?;
-
     let big_w = img.width();
     let big_h = img.height();
 
+    // Zero-dimension guard. The pipeline's ⓪ guard already rejects zero targets
+    // for pipeline callers; this defends direct `pub(crate)`/test callers and
+    // keeps w*h > 0 so the grids below are non-empty.
+    if width == 0 || height == 0 {
+        return Err(BeadError::InvalidImage {
+            reason: "Gerstner target width or height is 0".to_string(),
+        });
+    }
     // Upsampling guard: Gerstner requires target ≤ source (S_x, S_y >= 1). A
     // target larger than the cropped source (S < 1) would collapse many seeds
     // onto the same pixel and degenerate the window — reject, do NOT enter the
@@ -70,16 +76,11 @@ pub(crate) fn superpixel_assign(
             ),
         });
     }
-    // width/height > 0 is implied here: big_w >= width and a valid decoded image
-    // has big_w >= 1, so width >= 1 only when width <= big_w; but width == 0
-    // would make width <= big_w trivially true. The pipeline validates target
-    // dimensions before calling (mirrors image_to_grid); still, guard defensively
-    // so w*h > 0 and the grids below are non-empty.
-    if width == 0 || height == 0 {
-        return Err(BeadError::InvalidImage {
-            reason: "Gerstner target width or height is 0".to_string(),
-        });
-    }
+    // Palette validity is checked AFTER the Gerstner image guards, so a direct
+    // caller passing both an invalid palette and a zero-dim / upsampling target
+    // gets the Gerstner `InvalidImage` first — matching the pipeline's hoisted
+    // priority (image errors precede `InvalidPalette`).
+    check_palette_len(palette)?;
 
     let w = width as usize;
     let h = height as usize;

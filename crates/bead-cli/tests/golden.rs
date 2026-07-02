@@ -10,7 +10,7 @@
 //!
 //! Cross-platform posture (design D1): byte golden is asserted **only on the
 //! canonical platform (arm64 Linux; CI reference ubuntu-24.04-arm)** because the
-//! default `Lanczos3` resize weights go through `f32::sin` and the default
+//! default `Triangle` resize uses `f32` interpolation weights and the default
 //! `OklabMatcher` (and `LabMatcher`) goes through `cbrt`/`powf`, whose ULP is
 //! not guaranteed identical across architectures / libm implementations. The other
 //! platforms (x86-64 Linux, macOS, Windows) run the same tests but only assert
@@ -46,7 +46,7 @@ fn repo_root(rel: &str) -> PathBuf {
 /// Fixed input (design D4): committed 32×40 `samples/gradient.png` resized **to**
 /// 16×20 (`16:20 == 32:40`, so the center crop is a no-op — the fixture is not
 /// regenerated), `palettes/artkal_s.json`, and `GenerateOptions { width: 16,
-/// height: 20, .. }` whose `Default` supplies the real `Lanczos3` filter,
+/// height: 20, .. }` whose `Default` supplies the real `Triangle` filter,
 /// `cell_size 10`, and matcher `Oklab` (no CLI flag, design D4).
 fn fixed_result() -> bead_core::GenerateResult {
     let img_bytes = fs::read(repo_root("samples/gradient.png")).expect("read samples/gradient.png");

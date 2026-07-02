@@ -1,7 +1,7 @@
 # gerstner-superpixel 规范
 
 ## 目的
-待定 - 由归档变更 gerstner-pixel-abstraction 创建。归档后请更新目的。
+定义 `Gerstner` 可选生成模式的前段契约：确定性 SLIC 变体超像素（实数 per-axis 步长、原始网格锚定候选、明确 round-0 质心、快照式更新、固定累加序、上采样守卫）将裁剪源图联合降采样并分配到 `w×h` 输出 cell，再以 Oklab-argmin 贴到固定珠板产全板 `BeadPattern`；`max_colors` 复用 `GreedyReducer`。同机 canonical 确定性（f32、非跨架构位精确），永不发明中间色。生成模式选择 `GeneratorKind` 落在 `pipeline`。
 ## 需求
 ### 需求:Gerstner 超像素确定性算法
 `Gerstner` 前段 MUST 用**确定性 SLIC 变体**把裁剪后的源图降采样并分配到 `w×h` 个输出 cell，产出全板 `BeadPattern`。全部规则确定、**无随机、无 `rayon`、无 `HashMap`/`HashSet` 迭代顺序泄漏、无 `mul_add`/FMA**。下列每一项都是确定性所必需、MUST 逐条落地：

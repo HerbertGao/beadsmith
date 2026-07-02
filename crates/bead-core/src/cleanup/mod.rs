@@ -47,9 +47,10 @@ use crate::models::BeadPattern;
 ///
 /// Total under the same precondition as `match_pattern`'s output (`cells` are
 /// valid palette indices): it never panics on legal input. An **empty pattern**
-/// (`cells.len() == 0`) is returned verbatim. A component with **no
-/// differently-colored neighbor** (only possible when the whole image is one
-/// color) has no target and is left as-is.
+/// (`cells.len() == 0`) — or a malformed shape (`width == 0` / `height == 0` /
+/// `cells.len() != width * height`) — is returned verbatim. A component with
+/// **no differently-colored neighbor** (only possible when the whole image is
+/// one color) has no target and is left as-is.
 pub fn despeckle(pattern: &BeadPattern, min_region: u32) -> BeadPattern {
     let width = pattern.width as usize;
     let height = pattern.height as usize;
@@ -57,6 +58,13 @@ pub fn despeckle(pattern: &BeadPattern, min_region: u32) -> BeadPattern {
     let n = cells.len();
 
     if n == 0 {
+        return pattern.clone();
+    }
+    // Shape guard before the index math below (`idx % width`, neighbor offsets):
+    // a malformed public input (`width == 0`/`height == 0`, or `cells.len() !=
+    // width * height`) is returned verbatim rather than panicking. Pipeline
+    // patterns always satisfy this; the guard defends direct `pub` callers.
+    if width == 0 || height == 0 || width.checked_mul(height) != Some(n) {
         return pattern.clone();
     }
 
@@ -279,6 +287,27 @@ mod tests {
         assert_eq!(out.width, 0);
         assert_eq!(out.height, 0);
         assert!(out.cells.is_empty());
+    }
+
+    // Malformed public input (non-empty but shape-inconsistent) is returned
+    // verbatim rather than panicking on the index math. `despeckle` is `pub`, so
+    // a caller can hand-build such a pattern; the guard keeps it panic-free.
+    #[test]
+    fn malformed_shape_returned_verbatim() {
+        // width == 0 with non-empty cells (would divide-by-zero on `idx % width`).
+        let zero_width = BeadPattern {
+            width: 0,
+            height: 3,
+            cells: vec![0, 1, 2],
+        };
+        assert_eq!(despeckle(&zero_width, 1).cells, zero_width.cells);
+        // cells.len() != width * height (would index out of bounds on neighbors).
+        let mismatched = BeadPattern {
+            width: 4,
+            height: 4,
+            cells: vec![0, 1, 0],
+        };
+        assert_eq!(despeckle(&mismatched, 1).cells, mismatched.cells);
     }
 
     // 5.4c — min_region == 0 is a no-op (no component has zero beads).
