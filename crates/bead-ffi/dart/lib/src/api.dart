@@ -15,8 +15,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// 1. `load_palette(palette_json.as_bytes())` — `load_palette` takes `&[u8]`, so
 ///    the JSON `String` is passed as its UTF-8 bytes,
 /// 2. builds `GenerateOptions { width, height, ..Default::default() }` — the
-///    **exact** construction the CLI uses (filter/cell_size/shape = engine
-///    default Lanczos3/10/Square),
+///    **exact** construction the CLI uses (filter/cell_size/shape/matcher/generator
+///    = engine default Triangle/10/Square/Oklab/Staged; the opt-in Gerstner
+///    generator is deliberately not a boundary option),
 /// 3. calls `generate_pattern`, then `pattern_json` on the result.
 ///
 /// On any failure the `BeadError` is flattened to its `Display` string at the

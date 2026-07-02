@@ -73,12 +73,14 @@ requested.
 Scope (clarified at M7): "identical output for identical input" is
 **per-platform / per-architecture / per-`image`-version**. Pure-integer paths
 (`RgbMatcher`, statistics, renderer geometry) are bit-identical across
-architectures; the floating-point paths — the `Lanczos3` resize (its weights run
-`f32::sin`) and the default `LabMatcher` (CIELAB + ΔE76, `cbrt`/`powf`) — are
-**not** guaranteed bit-identical across architectures / libm. Golden byte-freezing is
-therefore canonical-only on arm64 Linux (CI `ubuntu-24.04-arm`); other platforms
-verify float-independent structural invariants. This is exactly what the golden
-tests and the future "CLI == FFI" (same-device) check require.
+architectures; the floating-point paths — the resize filter (default `Triangle`,
+f32 weights; other filters such as `Lanczos3` also run f32 weights, e.g.
+`f32::sin`) and the default `OklabMatcher` (plus `LabMatcher`, both with
+`cbrt`/`powf`) — are **not** guaranteed bit-identical across architectures /
+libm. Golden byte-freezing is therefore canonical-only on arm64 Linux (CI
+`ubuntu-24.04-arm`); other platforms verify float-independent structural
+invariants. This is exactly what the golden tests and the same-device "CLI ==
+FFI" check require.
 
 ---
 
@@ -95,7 +97,9 @@ bead-core/
   ├─ image/
   ├─ palette/
   ├─ quantizer/
+  ├─ cleanup/
   ├─ matcher/
+  ├─ gerstner/
   ├─ renderer/
   ├─ statistics/
   ├─ models/
@@ -137,16 +141,47 @@ pub fn validate_palette(...)
 
 ### quantizer Module
 
-Responsible for reducing colors.
+Responsible for reducing bead colors. Reduction runs **after** matching, on the
+matched `BeadPattern` (not on the raw pixel grid), and is **palette-aware**: it
+merges the least-used bead colors into the perceptually nearest retained bead
+colors and remaps their cells, so merges only ever flow between **real palette
+beads** — never inventing intermediate colors.
 
 - **Phase 1:** not enabled
-- **Phase 2:** Median Cut (`MedianCutQuantizer`) — implemented as the default; K-Means (future)
+- **Phase 2+:** greedy least-used merge (`GreedyReducer`) — implemented as the
+  default reducer behind the `BeadReducer` seam
 
 ```rust
-pub trait Quantizer {
-    fn quantize(...)
+pub trait BeadReducer {
+    fn reduce(&self, pattern: &BeadPattern) -> BeadPattern
 }
 ```
+
+---
+
+### cleanup Module
+
+Optional **spatial post-processing** on the final `BeadPattern` (a family; first
+member: connected-component **despeckle**). `despeckle` merges small same-color
+4-connected components (bead count ≤ `min_region`) into their **majority
+neighbor color** — pure-integer, **input-snapshot** (order-independent), never
+invents colors. It runs **after** reduction, is **opt-in** (default off), and is
+a **library/reuse primitive, not a generation entry** (Rule 4).
+
+```rust
+pub fn despeckle(pattern: &BeadPattern, min_region: u32) -> BeadPattern
+```
+
+Unlike reduction, despeckle is a **free function, not a `BeadReducer` trait
+impl** — deliberate: it operates on a different axis (spatial topology, not
+color count), never touches color coordinates, needs no palette, is pure-integer
+(cross-arch bit-exact, vs the f32 canonical-only reducer/matcher), and
+`min_region == 0` is a meaningful no-op (whereas `max_colors == 0` is invalid).
+A single-impl `PatternCleaner` trait would be a speculative seam; extract a
+shared post-processing seam only if a third spatial step (e.g. min-island,
+smoothing) arrives. **Despeckle is photo-noise oriented**: on flat cartoons its
+thin intentional features (outlines, text) are themselves small components, so
+it degrades detail — hence opt-in / default-off (see design tradeoff note).
 
 ---
 
@@ -155,12 +190,35 @@ pub trait Quantizer {
 Maps image colors to real bead colors. One of the most important modules.
 
 - **Phase 1:** RGB Euclidean distance (`RgbMatcher`)
-- **Phase 3:** CIELAB (Lab color space), distance via Delta E (`LabMatcher`) — implemented as the default
+- **Phase 3:** Oklab (OKLab color space), distance via Delta E OK (`OklabMatcher`) — implemented as the
+  default; `LabMatcher` remains available as an optional matcher.
 
 ```rust
 pub trait ColorMatcher {
     fn find_best_match(...)
 }
+```
+
+---
+
+### gerstner Module
+
+The **opt-in** Gerstner generation front end (see *Generation Modes* below). A
+**deterministic SLIC-variant** superpixel pass that jointly downsamples + assigns
+a cropped source image into the `w×h` bead grid, then snaps each cell's Oklab
+cluster centroid to the fixed palette. Not a `ColorMatcher`/`Renderer` impl — a
+whole front end that replaces *crop→resize→per-pixel match* with *crop→superpixel
+assign*. Reuses the `matcher` module's `pub(crate)` `srgb_to_oklab`/`linearize`
+and the palette Oklab snapshot; the palette snap is an **Oklab-coordinate argmin**
+(cluster centroid → nearest bead, same ΔEok²/tie rule as `OklabMatcher`, but keyed
+on an Oklab coordinate rather than RGB — so it is a distinct argmin, not
+`find_best_match`). Compactness `m` and iteration count `T` are fixed compile-time
+constants (visually tuned, never runtime inputs, not in the CLI); the per-axis
+step `S_x = W/w`, `S_y = H/h` is a run-time-derived deterministic value.
+
+```rust
+pub enum GeneratorKind { Staged, Gerstner }   // Default == Staged
+pub(crate) fn superpixel_assign(...) -> Result<BeadPattern, BeadError>
 ```
 
 ---
@@ -201,28 +259,65 @@ pub fn generate_summary(...)
 Orchestrates the entire generation process. This is the main entry point.
 
 ```text
-Load Image
+⓪ Dimension guard (width>0 && height>0)   ← before the branch and decode
    ↓
-Resize
+① Front end — branch on opts.generator:
+     Staged  : Load Image → Crop → Resize  (→ PixelGrid)
+     Gerstner: Load Image → Crop           (→ cropped RgbImage)
    ↓
-Quantize
+② Reducer fail-fast build (when max_colors set)
    ↓
-Match Palette
+③ Coloring / assignment — branch on opts.generator:
+     Staged  : Match Palette (per-pixel matcher)
+     Gerstner: Superpixel assign + Oklab palette snap
+   ↓  (both branches now hold a full-board BeadPattern)
+④ Shared tail:
+   Reduce Bead Colors (optional; when max_colors is set)
    ↓
-Generate Grid
+   Despeckle (optional; when despeckle is set)
    ↓
-Generate Statistics
-   ↓
-Render Preview
-   ↓
-Return Result
+   Generate Statistics → Render Preview → Render Grid → Return Result
 ```
+
+The two front ends diverge only in ① and ③; reduction, despeckle, statistics,
+and both renders are the **shared tail** (identical for both generators).
+Statistics and both rendered PNGs derive from the **reduced and (optionally)
+despeckled** `BeadPattern`.
 
 ```rust
 pub fn generate_pattern(...)
 ```
 
 All external callers should use this API.
+
+#### Generation Modes (`GeneratorKind`)
+
+`GenerateOptions.generator` selects the front end; `Default == Staged`, so the
+default path is byte-for-byte unchanged.
+
+- **`Staged` (default).** The staged crop → resize → per-pixel palette match path
+  (`image_to_grid` → matcher). Faithful "image to grid" resampling; the choice
+  for users who want the composition preserved.
+- **`Gerstner` (opt-in, photo-oriented).** Runs the `gerstner` module's
+  deterministic SLIC superpixel + Oklab palette-constrained snap instead of
+  resize + per-pixel match. Aimed at **photos / portraits / low bead counts**
+  where jointly optimizing downsample + assignment beats naïve area-average
+  resampling. It **deliberately abstracts / rearranges features** (the paper
+  itself notes caricature-like distortion), so it is **not** a faithful sampler —
+  flat cartoons see little benefit (thin outlines/text get abstracted away, like
+  despeckle). Both modes are **palette-constrained** (never invent an
+  intermediate color), share the same `GreedyReducer` `max_colors` reduction, and
+  are deterministic **same-machine** (f32 → canonical-only, same tier as
+  `OklabMatcher`; not cross-arch bit-exact).
+
+Guards: a top-level **dimension guard** (`width>0 && height>0`) runs before the
+branch and decode for both modes. Gerstner adds an **upsampling guard** — it
+requires `target ≤ source` after cropping (`S_x, S_y ≥ 1`) and returns
+`InvalidImage` otherwise (Staged may still upscale). **Performance (v1):**
+Gerstner is single-threaded and `O(source pixels × T)`, so large source images
+are slow — the mitigation is to pre-shrink the input; source-pixel clamping and
+`rayon` parallelism are deferred to Phase 2 (rayon must keep the fixed centroid
+accumulation order to preserve determinism).
 
 ---
 
@@ -392,7 +487,7 @@ Use `thiserror` inside core. Expose `Result<T, BeadError>` everywhere.
 Future algorithms should be swappable via traits:
 
 ```rust
-pub trait Quantizer
+pub trait BeadReducer
 pub trait ColorMatcher
 pub trait Renderer
 ```

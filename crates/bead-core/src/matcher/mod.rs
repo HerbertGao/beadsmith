@@ -6,15 +6,16 @@
 //! **no `rayon`** hold for *all* matchers — nearest-color comparison always
 //! compares squared distance (`√` is monotonic, so it preserves the argmin).
 //! **`no f32`** is specific to [`RgbMatcher`] (pure integer, bit-identical
-//! across architectures); [`LabMatcher`] deliberately introduces `f32` for its
-//! CIELAB/ΔE76 distance, so it is byte-stable only **same-machine** (canonical
-//! arm64 golden + same-machine CLI==FFI, like `Lanczos3`'s `f32::sin`).
+//! across architectures); [`LabMatcher`] and [`OklabMatcher`] deliberately
+//! introduce `f32` for perceptual distance, so they are byte-stable only
+//! **same-machine** (canonical arm64 golden + same-machine CLI==FFI, like
+//! `Lanczos3`'s `f32::sin`).
 //!
 //! The [`ColorMatcher`] trait is the seam between matchers: [`RgbMatcher`] is
 //! the algorithm-Phase-1 RGB squared-Euclidean implementation; [`LabMatcher`]
-//! is the algorithm-Phase-3 CIELAB/ΔE76 implementation and the pipeline
-//! default. `ColorMatcher` must stay object-safe (D2): it is used as
-//! `&dyn ColorMatcher` here and `Box<dyn>` in the M6 pipeline.
+//! and [`OklabMatcher`] are algorithm-Phase-3 perceptual implementations.
+//! `ColorMatcher` must stay object-safe (D2): it is used as `&dyn ColorMatcher`
+//! here and `Box<dyn>` in the M6 pipeline.
 
 use crate::models::{BeadPattern, PixelGrid};
 use crate::palette::Palette;
@@ -30,6 +31,14 @@ pub trait ColorMatcher {
     fn find_best_match(&self, target: [u8; 3]) -> u16;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MatcherKind {
+    Rgb,
+    Lab,
+    #[default]
+    Oklab,
+}
+
 /// Shared `new`-time palette-size guard for both matchers (design D7; reuses
 /// `InvalidPalette`, no new variant): empty `colors` → `InvalidPalette`
 /// (`reason` contains "no colors"); `colors.len() > 65536` → `InvalidPalette`
@@ -37,7 +46,7 @@ pub trait ColorMatcher {
 /// boundary is exact: legal indices are `0..=65535` (`u16::MAX == 65535`), so
 /// `len == 65536` is accepted and `65537` is the first rejected length. Never
 /// panics.
-fn check_palette_len(palette: &Palette) -> Result<(), BeadError> {
+pub(crate) fn check_palette_len(palette: &Palette) -> Result<(), BeadError> {
     if palette.colors.is_empty() {
         return Err(BeadError::InvalidPalette {
             reason: "matcher: palette has no colors".to_string(),
@@ -104,16 +113,7 @@ impl ColorMatcher for RgbMatcher {
     }
 }
 
-/// Convert an sRGB `[u8; 3]` to CIELAB `[L*, a*, b*]` (`f32`), D65 white point.
-///
-/// Standard pipeline (design D5): each channel `/255` → inverse-sRGB-gamma
-/// linearization → XYZ via the sRGB/D65 matrix → L\*a\*b\* with the `6/29`
-/// threshold piecewise + `cbrt`. Uses plain IEEE `f32` ops only — **no
-/// `mul_add` / FMA** (a fused multiply-add could codegen-diverge between the CLI
-/// binary and the FFI staticlib/cdylib and break same-machine byte equality,
-/// T4). For any `[u8; 3]` every step is finite, so the result never has a NaN.
-fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
-    // 1) channel /255 then inverse-gamma linearize into linear-light sRGB.
+pub(crate) fn linearize(rgb: [u8; 3]) -> [f32; 3] {
     let lin = |c: u8| -> f32 {
         let c = c as f32 / 255.0;
         if c <= 0.04045 {
@@ -122,9 +122,20 @@ fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
             ((c + 0.055) / 1.055).powf(2.4)
         }
     };
-    let r = lin(rgb[0]);
-    let g = lin(rgb[1]);
-    let b = lin(rgb[2]);
+    [lin(rgb[0]), lin(rgb[1]), lin(rgb[2])]
+}
+
+/// Convert an sRGB `[u8; 3]` to CIELAB `[L*, a*, b*]` (`f32`), D65 white point.
+///
+/// Standard pipeline (design D5): each channel `/255` → inverse-sRGB-gamma
+/// linearization → XYZ via the sRGB/D65 matrix → L\*a\*b\* with the `6/29`
+/// threshold piecewise + `cbrt`. Uses plain IEEE `f32` ops only — **no
+/// `mul_add` / FMA** (a fused multiply-add could codegen-diverge between the CLI
+/// binary and the FFI staticlib/cdylib and break same-machine byte equality,
+/// T4). For any `[u8; 3]` every step is finite, so the result never has a NaN.
+pub(crate) fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
+    // 1) channel /255 then inverse-gamma linearize into linear-light sRGB.
+    let [r, g, b] = linearize(rgb);
 
     // 2) linear sRGB -> XYZ via the sRGB / D65 matrix. Plain `*` and `+` (no
     //    mul_add): the column sums are exactly the D65 white below, so white
@@ -152,6 +163,28 @@ fn srgb_to_lab(rgb: [u8; 3]) -> [f32; 3] {
     let a = 500.0 * (fx - fy);
     let bb = 200.0 * (fy - fz);
     [l, a, bb]
+}
+
+/// Convert an sRGB `[u8; 3]` to Oklab `[L, a, b]` (`f32`).
+///
+/// Uses Bjorn Ottosson's standard linear-sRGB -> LMS -> cbrt -> Oklab
+/// matrices, with the same inverse-gamma linearization as [`srgb_to_lab`].
+pub(crate) fn srgb_to_oklab(rgb: [u8; 3]) -> [f32; 3] {
+    let [r, g, b] = linearize(rgb);
+
+    let l = 0.412_221_46 * r + 0.536_332_55 * g + 0.051_445_994 * b;
+    let m = 0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b;
+    let s = 0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b;
+
+    let l_ = l.cbrt();
+    let m_ = m.cbrt();
+    let s_ = s.cbrt();
+
+    let l_ok = 0.210_454_26 * l_ + 0.793_617_8 * m_ - 0.004_072_047 * s_;
+    let a_ok = 1.977_998_5 * l_ - 2.428_592_2 * m_ + 0.450_593_7 * s_;
+    let b_ok = 0.025_904_037 * l_ + 0.782_771_77 * m_ - 0.808_675_77 * s_;
+
+    [l_ok, a_ok, b_ok]
 }
 
 /// Phase 3 matcher: CIELAB + ΔE76 (perceptual distance), lowest index on a tie.
@@ -191,6 +224,52 @@ impl ColorMatcher for LabMatcher {
         // <= 65536 colors, so `best_i` is always set and fits in u16 — a total
         // function: no `Result`, no panic, and finite Lab in -> no NaN out (D5).
         let t = srgb_to_lab(target);
+        let mut best_i: usize = 0;
+        let mut best_d: f32 = f32::INFINITY;
+        for (i, c) in self.colors.iter().enumerate() {
+            let dl = t[0] - c[0];
+            let da = t[1] - c[1];
+            let db = t[2] - c[2];
+            let d = dl * dl + da * da + db * db;
+            if d < best_d {
+                best_d = d;
+                best_i = i;
+            }
+        }
+        best_i as u16
+    }
+}
+
+/// Phase 3 matcher: Oklab + ΔEok² (perceptual distance), lowest index on a tie.
+///
+/// Mirrors [`LabMatcher`]'s structure with an order-preserving Oklab snapshot
+/// taken at construction — `colors[i]` ≡ `srgb_to_oklab(palette.colors[i].rgb)`.
+/// Like Lab, this uses `f32` and is same-machine deterministic rather than
+/// cross-architecture bit-identical.
+#[derive(Debug)]
+pub struct OklabMatcher {
+    /// Order-preserving Oklab snapshot; `colors[i]` ≡ `srgb_to_oklab(palette.colors[i].rgb)`.
+    colors: Vec<[f32; 3]>,
+}
+
+impl OklabMatcher {
+    /// Build a matcher from a one-time, order-preserving Oklab snapshot;
+    /// size-validated via [`check_palette_len`] (same guards as `RgbMatcher`).
+    /// Never panics.
+    pub fn new(palette: &Palette) -> Result<OklabMatcher, BeadError> {
+        check_palette_len(palette)?;
+        let colors: Vec<[f32; 3]> = palette
+            .colors
+            .iter()
+            .map(|c| srgb_to_oklab(c.rgb))
+            .collect();
+        Ok(OklabMatcher { colors })
+    }
+}
+
+impl ColorMatcher for OklabMatcher {
+    fn find_best_match(&self, target: [u8; 3]) -> u16 {
+        let t = srgb_to_oklab(target);
         let mut best_i: usize = 0;
         let mut best_d: f32 = f32::INFINITY;
         for (i, c) in self.colors.iter().enumerate() {
@@ -660,5 +739,123 @@ mod tests {
             "same-machine repeated match must be byte-identical"
         );
         assert_eq!(first, second);
+    }
+
+    // ---- OklabMatcher (Phase 3) ----------------------------------------------
+
+    #[test]
+    fn oklab_conversion_known_values() {
+        let black = srgb_to_oklab([0, 0, 0]);
+        assert!(
+            black[0].abs() < 0.0001,
+            "black L must be ~0, got {}",
+            black[0]
+        );
+        assert!(black[1].abs() < 0.0001 && black[2].abs() < 0.0001);
+
+        let white = srgb_to_oklab([255, 255, 255]);
+        assert!(
+            (white[0] - 1.0).abs() < 0.0001,
+            "white L must be ~1, got {}",
+            white[0]
+        );
+        assert!(white[1].abs() < 0.0001 && white[2].abs() < 0.0001);
+
+        // standard sRGB red [255,0,0] -> Oklab ≈ (0.62796, 0.22486, 0.12585).
+        let red = srgb_to_oklab([255, 0, 0]);
+        assert!((red[0] - 0.627_96).abs() < 0.001, "red L: {}", red[0]);
+        assert!((red[1] - 0.224_86).abs() < 0.001, "red a: {}", red[1]);
+        assert!((red[2] - 0.125_85).abs() < 0.001, "red b: {}", red[2]);
+
+        for v in black.iter().chain(white.iter()).chain(red.iter()) {
+            assert!(v.is_finite(), "Oklab component must be finite, got {v}");
+        }
+    }
+
+    #[test]
+    fn oklab_exact_hit_and_duplicate_rgb_lowest_index() {
+        let palette = palette_from(&[("A", [10, 20, 30]), ("B", [200, 100, 50]), ("C", [0, 0, 0])]);
+        let matcher = OklabMatcher::new(&palette).expect("valid palette");
+        assert_eq!(matcher.find_best_match([10, 20, 30]), 0);
+        assert_eq!(matcher.find_best_match([200, 100, 50]), 1);
+        assert_eq!(matcher.find_best_match([0, 0, 0]), 2);
+
+        let dup = palette_from(&[("DUP_A", [42, 42, 42]), ("DUP_B", [42, 42, 42])]);
+        let m2 = OklabMatcher::new(&dup).expect("valid palette");
+        assert_eq!(m2.find_best_match([42, 42, 42]), 0);
+    }
+
+    #[test]
+    fn oklab_tie_lowest_index_and_guards() {
+        let palette = palette_from(&[
+            ("TIE_A", [100, 150, 200]),
+            ("TIE_B", [100, 150, 200]),
+            ("FAR", [0, 0, 0]),
+        ]);
+        let matcher = OklabMatcher::new(&palette).expect("valid palette");
+        assert_eq!(matcher.find_best_match([105, 150, 200]), 0);
+        assert_eq!(matcher.find_best_match([105, 150, 200]), 0);
+
+        let empty = Palette {
+            brand: "Empty".to_string(),
+            colors: vec![],
+        };
+        match OklabMatcher::new(&empty) {
+            Err(BeadError::InvalidPalette { reason }) => assert!(
+                reason.contains("no colors"),
+                "reason must mention no colors, got: {reason:?}"
+            ),
+            other => panic!("expected InvalidPalette, got {other:?}"),
+        }
+
+        let make = |n: usize| Palette {
+            brand: "Big".to_string(),
+            colors: (0..n)
+                .map(|i| PaletteColor {
+                    code: i.to_string(),
+                    name: i.to_string(),
+                    rgb: [0, 0, 0],
+                })
+                .collect(),
+        };
+        match OklabMatcher::new(&make(65537)) {
+            Err(BeadError::InvalidPalette { reason }) => assert!(
+                reason.contains("more than"),
+                "reason must mention more than, got: {reason:?}"
+            ),
+            other => panic!("expected InvalidPalette, got {other:?}"),
+        }
+        assert!(
+            OklabMatcher::new(&make(65536)).is_ok(),
+            "65536 colors must be accepted (u16::MAX == 65535)"
+        );
+    }
+
+    #[test]
+    fn oklab_differs_from_lab_in_blue() {
+        let palette = palette_from(&[
+            ("DEEP_BLUE", [0, 0, 180]),
+            ("SAT_BLUE", [0, 0, 255]),
+            ("BLUE_PURPLE", [80, 0, 210]),
+            ("PURPLE", [120, 0, 180]),
+            ("LAVENDER_BLUE", [90, 40, 230]),
+        ]);
+        let target = [0u8, 0, 200];
+        let lab = LabMatcher::new(&palette).expect("valid palette");
+        let oklab = OklabMatcher::new(&palette).expect("valid palette");
+
+        let lab_idx = lab.find_best_match(target);
+        let oklab_idx = oklab.find_best_match(target);
+        assert_eq!(lab_idx, 2, "LabMatcher picks blue-purple");
+        assert_eq!(oklab_idx, 0, "OklabMatcher picks deep blue");
+        assert_ne!(
+            oklab_idx, lab_idx,
+            "OklabMatcher must differ from LabMatcher on this blue-region sample"
+        );
+    }
+
+    #[test]
+    fn matcher_kind_default_is_oklab() {
+        assert_eq!(MatcherKind::default(), MatcherKind::Oklab);
     }
 }

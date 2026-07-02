@@ -49,10 +49,11 @@ cargo run -p bead-cli -- --help
 ```
 
 ## Conventions
+- OpenSpec 命令语言按当前项目的 `openspec/config.yaml` 决定：若该配置偏英文（English），使用原版 `openspec`；否则使用 `openspec-cn` 并用中文编写提案/规格。
 
 - Errors: `thiserror` in core, expose `Result<T, BeadError>`. `anyhow` in the
   CLI only.
-- Future algorithms slot in behind traits (`Quantizer`, `ColorMatcher`,
+- Future algorithms slot in behind traits (`BeadReducer`, `ColorMatcher`,
   `Renderer`) without touching the pipeline.
 - Performance: single-threaded through Phase 1; `rayon` arrives in Phase 2.
 - Spec-driven changes go through OpenSpec (`openspec/`).

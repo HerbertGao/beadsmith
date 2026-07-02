@@ -3,6 +3,4 @@ Size: 16 x 20
 Total Beads: 320
 Palette: Artkal S
 
-S13 Black: 190
-S64 Black Rock: 110
-S91 Brunswick Green: 20
+S13 Black: 320

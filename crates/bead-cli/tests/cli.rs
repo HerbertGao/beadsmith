@@ -184,6 +184,171 @@ fn cli_generate_and_palette_subcommands() {
     let _ = fs::remove_dir_all(&work);
 }
 
+#[test]
+fn cli_generate_matcher_flag_accepts_known_values_and_rejects_unknown() {
+    let work = scratch("cli-matcher");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    for matcher in ["rgb", "lab", "oklab"] {
+        let out = work.join(format!("m-{matcher}"));
+        let r = Command::new(BIN)
+            .args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(&out)
+            .args(["--matcher", matcher])
+            .output()
+            .expect("run generate with matcher");
+
+        assert!(
+            r.status.success(),
+            "generate --matcher {matcher} must succeed: {:?}",
+            String::from_utf8_lossy(&r.stderr)
+        );
+        assert!(
+            out.join("preview.png").exists(),
+            "preview.png must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("grid.png").exists(),
+            "grid.png must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("pattern.json").exists(),
+            "pattern.json must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("summary.txt").exists(),
+            "summary.txt must exist for matcher {matcher}"
+        );
+    }
+
+    let bad_out = work.join("invalid");
+    let bad = Command::new(BIN)
+        .args(["generate", "--input"])
+        .arg(&input)
+        .arg("--palette")
+        .arg(&good_palette)
+        .args(["--width", "16", "--height", "20", "--output"])
+        .arg(&bad_out)
+        .args(["--matcher", "hsv"])
+        .output()
+        .expect("run generate with invalid matcher");
+
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "invalid matcher should exit 2: {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "invalid matcher should be non-success"
+    );
+    let stderr = String::from_utf8_lossy(&bad.stderr).to_lowercase();
+    assert!(stderr.contains("possible values"));
+    assert!(stderr.contains("rgb") && stderr.contains("lab") && stderr.contains("oklab"));
+    assert!(
+        !bad_out.exists(),
+        "invalid matcher should not create output path"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
+/// 5.2 — `--generator staged|gerstner` each exit 0 and write four non-empty
+/// files; omitting the flag matches `staged` byte-for-byte (default); an
+/// out-of-set value (e.g. `slic`) is rejected by clap with exit code 2, stderr
+/// naming the possible values, no panic, and no output dir created. Source
+/// `gradient.png` is 32x40 and the target is 16x20, so gerstner's upsample
+/// guard (target <= source) is satisfied. Same fixture/no-deps style.
+#[test]
+fn cli_generator_flag_accepts_known_values_and_rejects_unknown() {
+    let work = scratch("cli-generator");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    let run = |out: &Path, extra: &[&str]| {
+        let mut cmd = Command::new(BIN);
+        cmd.args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(out)
+            .args(extra);
+        cmd.output().expect("run generate")
+    };
+
+    let four = |out: &Path| {
+        [
+            out.join("preview.png"),
+            out.join("grid.png"),
+            out.join("pattern.json"),
+            out.join("summary.txt"),
+        ]
+    };
+
+    // --- --generator staged / gerstner: exit 0, four non-empty files ---------
+    for generator in ["staged", "gerstner"] {
+        let out = work.join(format!("g-{generator}"));
+        let r = run(&out, &["--generator", generator]);
+        assert!(
+            r.status.success(),
+            "generate --generator {generator} must exit 0; stderr: {}",
+            String::from_utf8_lossy(&r.stderr)
+        );
+        for f in four(&out) {
+            let meta = fs::metadata(&f).unwrap_or_else(|e| panic!("missing {f:?}: {e}"));
+            assert!(
+                meta.len() > 0,
+                "{f:?} must be non-empty for generator {generator}"
+            );
+        }
+    }
+
+    // --- omitting --generator == --generator staged (default, byte-identical) -
+    let none = work.join("g-none");
+    let rn = run(&none, &[]);
+    assert!(
+        rn.status.success(),
+        "generate without --generator must exit 0"
+    );
+    for (a, b) in four(&work.join("g-staged")).iter().zip(four(&none).iter()) {
+        assert_eq!(
+            fs::read(a).unwrap(),
+            fs::read(b).unwrap(),
+            "default generator must equal --generator staged: {a:?} differs from {b:?}"
+        );
+    }
+
+    // --- --generator slic (out of set): clap rejects, exit 2, no output dir ---
+    let bad_out = work.join("g-invalid");
+    let bad = run(&bad_out, &["--generator", "slic"]);
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "out-of-set --generator must exit 2 (not panic=101 / signal=None); got {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "out-of-set --generator must be non-success"
+    );
+    let stderr = String::from_utf8_lossy(&bad.stderr).to_lowercase();
+    assert!(stderr.contains("possible values"));
+    assert!(stderr.contains("staged") && stderr.contains("gerstner"));
+    assert!(
+        !bad_out.exists(),
+        "out-of-set --generator must not create output path"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
 /// 4.3 — `--max-colors N` limits the output bead color count to ≤ N (exit 0,
 /// four non-empty files, summary color lines ≤ N); `--max-colors 0` exits
 /// non-zero (1, not panic=101) with a contextual stderr message. Same fixture
@@ -260,6 +425,89 @@ fn cli_max_colors_ok_and_zero_rejected() {
     assert!(
         bad_stderr.contains("max_colors"),
         "generate --max-colors 0 stderr must surface the error context (\"max_colors\"); got: {bad_stderr:?}"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
+/// 4.2 — `--despeckle N` (N >= 1) exits 0 and writes four non-empty files;
+/// `--despeckle 0` is a legal no-op producing output byte-identical to omitting
+/// the flag; a non-`u32` value (e.g. `x`) is rejected by clap with exit code 2
+/// (not panic=101), and no output dir is created. Same fixture/no-deps style.
+#[test]
+fn cli_despeckle_flag_ok_zero_noop_and_non_u32_rejected() {
+    let work = scratch("cli-despeckle");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    let run = |out: &Path, extra: &[&str]| {
+        let mut cmd = Command::new(BIN);
+        cmd.args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(out)
+            .args(extra);
+        cmd.output().expect("run generate")
+    };
+
+    let four = |out: &Path| {
+        [
+            out.join("preview.png"),
+            out.join("grid.png"),
+            out.join("pattern.json"),
+            out.join("summary.txt"),
+        ]
+    };
+
+    // --- --despeckle 1: exit 0, four non-empty files -------------------------
+    let out1 = work.join("d1");
+    let r1 = run(&out1, &["--despeckle", "1"]);
+    assert!(
+        r1.status.success(),
+        "generate --despeckle 1 must exit 0; stderr: {}",
+        String::from_utf8_lossy(&r1.stderr)
+    );
+    for f in four(&out1) {
+        let meta = fs::metadata(&f).unwrap_or_else(|e| panic!("missing {f:?}: {e}"));
+        assert!(meta.len() > 0, "{f:?} must be non-empty");
+    }
+
+    // --- --despeckle 0 == omitting the flag (legal no-op, byte-identical) ----
+    let out0 = work.join("d0");
+    let none = work.join("dnone");
+    let r0 = run(&out0, &["--despeckle", "0"]);
+    let rn = run(&none, &[]);
+    assert!(r0.status.success(), "generate --despeckle 0 must exit 0");
+    assert!(
+        rn.status.success(),
+        "generate without --despeckle must exit 0"
+    );
+    for (a, b) in four(&out0).iter().zip(four(&none).iter()) {
+        assert_eq!(
+            fs::read(a).unwrap(),
+            fs::read(b).unwrap(),
+            "--despeckle 0 must be a no-op: {a:?} differs from {b:?}"
+        );
+    }
+
+    // --- --despeckle x (non-u32): clap rejects, exit 2, no output dir --------
+    let bad_out = work.join("dbad");
+    let bad = run(&bad_out, &["--despeckle", "x"]);
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "non-u32 --despeckle must exit 2 (not panic=101 / signal=None); got {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "non-u32 --despeckle must be non-success"
+    );
+    assert!(
+        !bad_out.exists(),
+        "non-u32 --despeckle must not create output path"
     );
 
     let _ = fs::remove_dir_all(&work);

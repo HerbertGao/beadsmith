@@ -14,7 +14,7 @@
 // Why these two sizes (per spec / D-Test): 16×20 is the fixture's 4:5 line;
 // 30×24 is 5:4 (off-4:5) AND non-square. A bridge that hardcodes a size, derives
 // height from width (×5/4), or swaps width↔height fails at least one of them.
-// 30×24 also forces a real non-identity center-crop + Lanczos3 resize.
+// 30×24 also forces a real non-identity center-crop + Triangle resize.
 //
 // The symbols this test imports (`generate`, `GenerateOutput`, `BeadPattern`,
 // `ColorStat`, `BeadFfi`) ARE the stable import surface M9's PatternEngine

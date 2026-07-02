@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use bead_core::pipeline::pattern_json;
-use bead_core::{generate_pattern, load_palette, GenerateOptions};
-use clap::{Parser, Subcommand};
+use bead_core::{generate_pattern, load_palette, GenerateOptions, GeneratorKind, MatcherKind};
+use clap::{Parser, Subcommand, ValueEnum};
 
 /// Beadsmith CLI — turns images into bead patterns. Thin wrapper over
 /// `bead-core`; contains no algorithms.
@@ -35,12 +35,21 @@ enum Command {
         /// Target grid height in cells.
         #[arg(long)]
         height: u32,
+        /// Matching strategy: rgb, lab, or oklab.
+        #[arg(long, value_enum, default_value = "oklab")]
+        matcher: CliMatcher,
+        /// Generation mode: staged (default) or gerstner (photo path).
+        #[arg(long, value_enum, default_value = "staged")]
+        generator: CliGenerator,
         /// Output directory (created if missing; files are overwritten).
         #[arg(long)]
         output: PathBuf,
         /// Limit the pattern to at most N bead colors (e.g. 24/36/48/72).
         #[arg(long)]
         max_colors: Option<u32>,
+        /// Clean up isolated same-color regions of at most N beads (0 = no-op).
+        #[arg(long)]
+        despeckle: Option<u32>,
     },
     /// Palette subcommands.
     Palette {
@@ -73,9 +82,14 @@ fn main() -> Result<()> {
             palette,
             width,
             height,
+            matcher,
+            generator,
             output,
             max_colors,
-        } => generate(&input, &palette, width, height, &output, max_colors),
+            despeckle,
+        } => generate(
+            &input, &palette, width, height, matcher, generator, &output, max_colors, despeckle,
+        ),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
             // ponytail: 桩成显式非零退出，不假绿、不 panic
@@ -90,13 +104,19 @@ fn main() -> Result<()> {
     }
 }
 
+// ponytail: thin CLI passthrough — flags map 1:1 to GenerateOptions; a params
+// struct here would be pure ceremony. Group them if a 9th flag ever lands.
+#[allow(clippy::too_many_arguments)]
 fn generate(
     input: &Path,
     palette: &Path,
     width: u32,
     height: u32,
+    matcher: CliMatcher,
+    generator: CliGenerator,
     output: &Path,
     max_colors: Option<u32>,
+    despeckle: Option<u32>,
 ) -> Result<()> {
     let img_bytes =
         fs::read(input).with_context(|| format!("failed to read input image {input:?}"))?;
@@ -108,7 +128,10 @@ fn generate(
     let opts = GenerateOptions {
         width,
         height,
+        matcher: matcher.into(),
+        generator: generator.into(),
         max_colors,
+        despeckle,
         ..Default::default()
     };
     let result =
@@ -134,6 +157,38 @@ fn generate(
         .with_context(|| format!("failed to write {summary_path:?}"))?;
 
     Ok(())
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+enum CliMatcher {
+    Rgb,
+    Lab,
+    Oklab,
+}
+
+impl From<CliMatcher> for MatcherKind {
+    fn from(v: CliMatcher) -> Self {
+        match v {
+            CliMatcher::Rgb => Self::Rgb,
+            CliMatcher::Lab => Self::Lab,
+            CliMatcher::Oklab => Self::Oklab,
+        }
+    }
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+enum CliGenerator {
+    Staged,
+    Gerstner,
+}
+
+impl From<CliGenerator> for GeneratorKind {
+    fn from(v: CliGenerator) -> Self {
+        match v {
+            CliGenerator::Staged => Self::Staged,
+            CliGenerator::Gerstner => Self::Gerstner,
+        }
+    }
 }
 
 fn palette_validate(path: &Path) -> Result<()> {

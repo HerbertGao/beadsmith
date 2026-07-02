@@ -1,397 +1,529 @@
-//! Color quantization: reduce a `PixelGrid` to fewer distinct colors before
-//! color matching. This is the optional Phase-2 stage (after `image_to_grid`,
-//! before `match_pattern`); see design D1/D2.
+//! Palette-aware bead-color reduction: merge an already-matched `BeadPattern`
+//! down to fewer distinct bead colors. This is the optional Phase-2 stage —
+//! it runs **after** `match_pattern` (post-match, pattern→pattern), not before
+//! it, so it only ever merges *existing* bead colors rather than inventing
+//! intermediate colors on the pre-match pixel grid (design D1/D2).
 //!
-//! The [`Quantizer`] trait is the seam between quantizers, mirroring
-//! [`crate::matcher::ColorMatcher`]: object-safe (`&dyn Quantizer` /
-//! `Box<dyn Quantizer>`), configuration taken at `new`, value semantics
-//! (immutable snapshot after construction). [`MedianCutQuantizer`] is the
-//! Phase-2 RGB Median-Cut implementation — pure integer (no `f32`, no
-//! `sqrt`), bit-identical across architectures (like `RgbMatcher`).
+//! The reduction seam is [`BeadReducer`] (mirroring [`crate::matcher::ColorMatcher`]):
+//! object-safe (`&dyn BeadReducer` / `Box<dyn BeadReducer>`), configuration
+//! taken at `new`, value semantics (immutable snapshot after construction).
+//! [`GreedyReducer`] is the greedy least-usage merge implementation; its
+//! perceptual metric reuses the matcher's shared sRGB→space conversion
+//! (`srgb_to_lab`/`srgb_to_oklab`, no local copy) and a byte-for-byte-isomorphic
+//! squared-sum distance (design D3/D5).
 
-use crate::models::PixelGrid;
+use crate::matcher::{check_palette_len, srgb_to_lab, srgb_to_oklab, MatcherKind};
+use crate::models::BeadPattern;
+use crate::palette::Palette;
 use crate::BeadError;
 
-/// Reduces a `PixelGrid` to fewer distinct colors, producing a new
-/// `PixelGrid` of the same shape (`width`/`height` carried over). This is the
-/// optional stage before color matching (design D1). Must remain object-safe
-/// — no generic methods, no `Self`-returning methods, no associated types in
-/// signatures.
+/// Reduces a `BeadPattern` to fewer distinct bead colors, producing a new
+/// `BeadPattern` of the same shape (`width`/`height`/`cells.len()` carried
+/// over). Must remain object-safe (`&dyn BeadReducer` / `Box<dyn BeadReducer>`)
+/// — no generic methods, no `Self`-returning methods, no associated types.
 ///
-/// `quantize` is a total function: it does not return `Result` and does not
-/// panic; an empty grid (`width == 0` or `height == 0` → `pixels.len() == 0`)
-/// is returned verbatim.
-pub trait Quantizer {
-    /// Returns a new `PixelGrid` whose distinct-color count is bounded by the
-    /// quantizer's configured maximum. Never panics.
-    fn quantize(&self, grid: &PixelGrid) -> PixelGrid;
+/// `reduce` does **not** return `Result`. **Precondition** for the no-panic
+/// guarantee (color-reduction spec / design D5): every `cells` value is a valid
+/// palette index (`< palette.colors.len()` for the palette given to the
+/// reducer's constructor) **and** the pattern was matched against that same
+/// palette. An out-of-bounds index is a caller contract violation and **may
+/// panic** (unlike `count_colors`, which skips out-of-range indices — `reduce`
+/// must index a color snapshot, so it cannot meaningfully remap an out-of-range
+/// cell). Within the precondition `reduce` is total. An empty pattern
+/// (`cells.len() == 0`) is returned verbatim, never panicking.
+pub trait BeadReducer {
+    /// Returns a new `BeadPattern` whose distinct bead-color count is bounded by
+    /// the reducer's configured maximum. Total under the precondition above.
+    fn reduce(&self, pattern: &BeadPattern) -> BeadPattern;
 }
 
-/// Phase 2 quantizer: RGB Median Cut, fully deterministic rules (design D2).
-///
-/// Holds the `max_colors` snapshot taken at construction. Because it is a
-/// snapshot, the quantizer is immutable after `new` — the intended value
-/// semantics (same as `RgbMatcher`).
+/// Order-preserving snapshot of every palette color in the matcher's space,
+/// taken at construction. Snapshot index `i` ≡ `palette.colors[i]`, carrying the
+/// lowest-index tie rule (same value semantics as the matchers).
 #[derive(Debug)]
-pub struct MedianCutQuantizer {
+enum ColorSnapshot {
+    /// Integer RGB — cross-architecture bit-exact distance (like `RgbMatcher`).
+    Rgb(Vec<[u8; 3]>),
+    /// CIELAB or Oklab `f32` — same-machine deterministic (like `LabMatcher` /
+    /// `OklabMatcher`). Both use the identical squared-sum formula.
+    Perceptual(Vec<[f32; 3]>),
+}
+
+impl ColorSnapshot {
+    fn len(&self) -> usize {
+        match self {
+            ColorSnapshot::Rgb(v) => v.len(),
+            ColorSnapshot::Perceptual(v) => v.len(),
+        }
+    }
+
+    /// Among the in-use colors (excluding `sac`), the perceptually nearest to
+    /// `sac` by squared distance; the lowest palette index wins a tie (strict
+    /// `<` while scanning ascending — same rule as `ColorMatcher`). At least one
+    /// other in-use color is guaranteed by the caller, so a real index is
+    /// returned. No `sqrt`; no `mul_add` on the `f32` path (design D3/D5, T4).
+    fn nearest_target(&self, sac: usize, in_use: &[bool]) -> usize {
+        let mut best_i = 0usize;
+        match self {
+            ColorSnapshot::Rgb(cols) => {
+                let s = cols[sac];
+                let mut best_d = u32::MAX;
+                for (i, c) in cols.iter().enumerate() {
+                    if i == sac || !in_use[i] {
+                        continue;
+                    }
+                    // Widen to i32 before subtracting; accumulate in u32
+                    // (max 3*255^2 = 195075 > u16). Pure integer, cross-arch
+                    // bit-exact — same formula as `RgbMatcher` (design D3).
+                    let dr = s[0] as i32 - c[0] as i32;
+                    let dg = s[1] as i32 - c[1] as i32;
+                    let db = s[2] as i32 - c[2] as i32;
+                    let d = (dr * dr + dg * dg + db * db) as u32;
+                    if d < best_d {
+                        best_d = d;
+                        best_i = i;
+                    }
+                }
+            }
+            ColorSnapshot::Perceptual(cols) => {
+                let s = cols[sac];
+                let mut best_d = f32::INFINITY;
+                for (i, c) in cols.iter().enumerate() {
+                    if i == sac || !in_use[i] {
+                        continue;
+                    }
+                    // Sum of squared component diffs (= ΔE76² / ΔEok²); `√` is
+                    // monotonic so squared distance preserves the argmin. Plain
+                    // f32 ops, no mul_add/FMA (same as Lab/Oklab matchers).
+                    let dl = s[0] - c[0];
+                    let da = s[1] - c[1];
+                    let db = s[2] - c[2];
+                    let d = dl * dl + da * da + db * db;
+                    if d < best_d {
+                        best_d = d;
+                        best_i = i;
+                    }
+                }
+            }
+        }
+        best_i
+    }
+}
+
+/// Palette-aware bead-color reducer: greedy least-usage merge (design D2).
+///
+/// Holds an order-preserving color snapshot in the matcher's space plus the
+/// `max_colors` upper bound, both taken at construction — immutable after `new`
+/// (value semantics, same as the matchers).
+#[derive(Debug)]
+pub struct GreedyReducer {
+    snapshot: ColorSnapshot,
     max_colors: u32,
 }
 
-impl MedianCutQuantizer {
-    /// Build a quantizer with the given color-count upper bound. Rejects
-    /// `max_colors == 0` via [`BeadError::InvalidImage`] (`reason` mentions
-    /// "max_colors"; reuses the zero-dimension variant — no new variant, design
-    /// D1). Never panics.
-    pub fn new(max_colors: u32) -> Result<MedianCutQuantizer, BeadError> {
+impl GreedyReducer {
+    /// Build a reducer for `palette` in `matcher`'s color space with the given
+    /// bead-color upper bound.
+    ///
+    /// Validation order is fixed (decides error priority, design D4): `max_colors
+    /// == 0` → `Err(BeadError::InvalidImage)` (`reason` mentions "max_colors";
+    /// reuses the zero-dimension variant, no new variant) **before** any palette
+    /// check; only then is the palette size-validated via the matcher's shared
+    /// [`check_palette_len`] (empty / > 65536 → `InvalidPalette`). The per-color
+    /// coordinate snapshot reuses the matcher's shared sRGB→space conversion (no
+    /// local copy). Never panics.
+    pub fn new(
+        palette: &Palette,
+        matcher: MatcherKind,
+        max_colors: u32,
+    ) -> Result<GreedyReducer, BeadError> {
         if max_colors == 0 {
             return Err(BeadError::InvalidImage {
-                reason: "quantizer: max_colors must be >= 1, got 0".to_string(),
+                reason: "reducer: max_colors must be >= 1, got 0".to_string(),
             });
         }
-        Ok(MedianCutQuantizer { max_colors })
+        check_palette_len(palette)?;
+        let snapshot = match matcher {
+            MatcherKind::Rgb => ColorSnapshot::Rgb(palette.colors.iter().map(|c| c.rgb).collect()),
+            MatcherKind::Lab => ColorSnapshot::Perceptual(
+                palette.colors.iter().map(|c| srgb_to_lab(c.rgb)).collect(),
+            ),
+            MatcherKind::Oklab => ColorSnapshot::Perceptual(
+                palette
+                    .colors
+                    .iter()
+                    .map(|c| srgb_to_oklab(c.rgb))
+                    .collect(),
+            ),
+        };
+        Ok(GreedyReducer {
+            snapshot,
+            max_colors,
+        })
     }
 }
 
-impl Quantizer for MedianCutQuantizer {
-    fn quantize(&self, grid: &PixelGrid) -> PixelGrid {
-        let pixels = &grid.pixels;
+impl BeadReducer for GreedyReducer {
+    fn reduce(&self, pattern: &BeadPattern) -> BeadPattern {
+        let n = self.snapshot.len();
 
-        // Step 0 short-circuit (design D2): exact distinct-color count via
-        // sort+dedup (deterministic, no HashMap/HashSet iteration order). If
-        // d <= max_colors (incl. empty grid d==0), return the input verbatim —
-        // a guaranteed no-op and the empty-grid safe path (no sum/count
-        // division below).
-        let d = distinct_color_count(pixels);
+        // Usage per palette index. An in-precondition `cells` value is `< n`;
+        // an out-of-bounds index panics here (contract violation, design D5).
+        let mut usage = vec![0u32; n];
+        for &c in &pattern.cells {
+            usage[c as usize] += 1;
+        }
+
+        // "In use" = usage > 0. `d` is the distinct bead-color count.
+        let mut in_use: Vec<bool> = usage.iter().map(|&u| u > 0).collect();
+        let mut d = in_use.iter().filter(|&&b| b).count() as u32;
+
+        // short-circuit no-op (incl. empty pattern d==0): return verbatim.
         if d <= self.max_colors {
-            return grid.clone();
+            return pattern.clone();
         }
 
-        // Each bucket holds the row-major pixel indices it owns. The initial
-        // bucket owns every pixel; `pixels` is non-empty here (d > max_colors >= 1).
-        let mut buckets: Vec<Vec<usize>> = vec![(0..pixels.len()).collect()];
+        // `rep[i]` = current representative for original palette color `i`.
+        // Merging chains collapse through it, so output stays valid indices.
+        let mut rep: Vec<u16> = (0..n).map(|i| i as u16).collect();
 
-        while buckets.len() < self.max_colors as usize {
-            // Find the splittable bucket + channel with the largest single-
-            // channel spread (max - min). Tie → lower bucket index, then R < G < B.
-            let (best_bi, best_ch) = match pick_split(pixels, &buckets) {
-                Some(t) => t,
-                None => break, // no splittable bucket remains
-            };
-
-            // Sort the selected bucket's pixels by a strict total-order key
-            // `(selected-channel value, R, G, B, row-major index)` — the final
-            // key is unique, so this is a true total order regardless of sort
-            // stability (design D2 step 2b).
-            let mut indices = buckets[best_bi].clone();
-            indices.sort_by(|&a, &b| {
-                let pa = &pixels[a];
-                let pb = &pixels[b];
-                (pa[best_ch], pa[0], pa[1], pa[2], a).cmp(&(pb[best_ch], pb[0], pb[1], pb[2], b))
-            });
-
-            // Split at the median index `len/2`: lower half [0, mid) replaces
-            // bucket i in place, upper half [mid, len) is inserted at i+1 (the
-            // remaining buckets shift right); bucket order stays deterministic
-            // (design D2 step 2c).
-            let mid = indices.len() / 2;
-            let upper = indices.split_off(mid);
-            buckets[best_bi] = indices;
-            buckets.insert(best_bi + 1, upper);
-        }
-
-        // Representative color per bucket = per-channel mean with u64
-        // accumulator and integer-truncating division (design D2 step 3).
-        let reps: Vec<[u8; 3]> = buckets.iter().map(|b| representative(pixels, b)).collect();
-
-        // Map each pixel to its bucket's representative, preserving row-major
-        // order (design D2 step 4).
-        let mut out_pixels: Vec<[u8; 3]> = vec![[0, 0, 0]; pixels.len()];
-        for (bi, b) in buckets.iter().enumerate() {
-            let rep = reps[bi];
-            for &pi in b {
-                out_pixels[pi] = rep;
+        while d > self.max_colors {
+            // Sacrifice: least-used in-use color; tie → LARGER index. Scanning
+            // ascending with `<=` lets the larger index win a usage tie.
+            let mut sac = 0usize;
+            let mut best_u = u32::MAX;
+            for (i, &used) in in_use.iter().enumerate() {
+                if used && usage[i] <= best_u {
+                    best_u = usage[i];
+                    sac = i;
+                }
             }
-        }
 
-        PixelGrid {
-            width: grid.width,
-            height: grid.height,
-            pixels: out_pixels,
-        }
-    }
-}
+            // Target: nearest remaining in-use color; tie → smaller index.
+            let tgt = self.snapshot.nearest_target(sac, &in_use);
 
-/// Exact distinct-color count via deterministic sort + dedup (no
-/// `HashMap`/`HashSet` iteration order; design D2 step 0).
-fn distinct_color_count(pixels: &[[u8; 3]]) -> u32 {
-    let mut sorted = pixels.to_vec();
-    sorted.sort_unstable();
-    sorted.dedup();
-    sorted.len() as u32
-}
-
-/// Among buckets with at least two pixels and a non-zero spread on some
-/// channel, return the `(bucket_index, channel)` with the largest single-
-/// channel spread; ties broken by lower bucket index then by R < G < B
-/// (design D2 step 2a). Returns `None` when no splittable bucket remains.
-fn pick_split(pixels: &[[u8; 3]], buckets: &[Vec<usize>]) -> Option<(usize, usize)> {
-    let mut best_bi: Option<usize> = None;
-    let mut best_ch: usize = 0;
-    let mut best_sp: u32 = 0;
-    for (bi, b) in buckets.iter().enumerate() {
-        if b.len() < 2 {
-            continue;
-        }
-        let spreads = channel_spreads(pixels, b);
-        // Pick the channel with the largest spread; strict `>` keeps R < G < B
-        // on a tie (R considered first).
-        let mut ch = 0usize;
-        let mut sp = spreads[0];
-        if spreads[1] > sp {
-            ch = 1;
-            sp = spreads[1];
-        }
-        if spreads[2] > sp {
-            ch = 2;
-            sp = spreads[2];
-        }
-        if sp == 0 {
-            // All pixels in this bucket are the same color — not splittable.
-            continue;
-        }
-        // Larger spread wins; on a tie keep the earlier (lower-bucket) entry, so
-        // bucket-index tiebreak is satisfied by strict `>` only.
-        if best_bi.is_none() || sp > best_sp {
-            best_bi = Some(bi);
-            best_ch = ch;
-            best_sp = sp;
-        }
-    }
-    best_bi.map(|bi| (bi, best_ch))
-}
-
-/// Per-channel spread (`max - min`) across the pixels of a bucket, as `u32` to
-/// avoid any subtraction edge case (max >= min always holds).
-fn channel_spreads(pixels: &[[u8; 3]], bucket: &[usize]) -> [u32; 3] {
-    let mut mn = [u8::MAX; 3];
-    let mut mx = [u8::MIN; 3];
-    for &pi in bucket {
-        let px = &pixels[pi];
-        for c in 0..3 {
-            if px[c] < mn[c] {
-                mn[c] = px[c];
+            // Merge sacrifice into target: repoint every color currently mapped
+            // to `sac` (itself + anything earlier merged into it), fold usage.
+            let sac16 = sac as u16;
+            let tgt16 = tgt as u16;
+            for r in rep.iter_mut() {
+                if *r == sac16 {
+                    *r = tgt16;
+                }
             }
-            if px[c] > mx[c] {
-                mx[c] = px[c];
-            }
+            usage[tgt] += usage[sac];
+            usage[sac] = 0;
+            in_use[sac] = false;
+            d -= 1;
+        }
+
+        let cells: Vec<u16> = pattern.cells.iter().map(|&c| rep[c as usize]).collect();
+        BeadPattern {
+            width: pattern.width,
+            height: pattern.height,
+            cells,
         }
     }
-    [
-        mx[0] as u32 - mn[0] as u32,
-        mx[1] as u32 - mn[1] as u32,
-        mx[2] as u32 - mn[2] as u32,
-    ]
-}
-
-/// Per-channel mean of a bucket's pixels: `sum: u64 / count` with integer
-/// truncation (design D2 step 3). The bucket is guaranteed non-empty, so no
-/// division by zero. `u64` accumulator guards against `255·N > u32::MAX` on
-/// large grids.
-fn representative(pixels: &[[u8; 3]], bucket: &[usize]) -> [u8; 3] {
-    let mut sum = [0u64; 3];
-    for &pi in bucket {
-        let px = &pixels[pi];
-        sum[0] += px[0] as u64;
-        sum[1] += px[1] as u64;
-        sum[2] += px[2] as u64;
-    }
-    let count = bucket.len() as u64;
-    [
-        (sum[0] / count) as u8,
-        (sum[1] / count) as u8,
-        (sum[2] / count) as u8,
-    ]
 }
 
 #[cfg(test)]
-mod tests {
+mod reducer_tests {
     use super::*;
+    use crate::matcher::{ColorMatcher, RgbMatcher};
+    use crate::palette::PaletteColor;
 
-    // 2.1 — fixed small grid with splittable colors, fixed max_colors →
-    // hardcoded expected output; repeated calls identical (cross-arch bit-exact,
-    // pure integer so the expected Vec is hardcoded).
-    #[test]
-    fn fixed_input_hardcoded_output() {
-        let grid = PixelGrid {
-            width: 2,
-            height: 2,
-            pixels: vec![[0, 0, 0], [10, 10, 10], [100, 100, 100], [255, 255, 255]],
-        };
-        let q = MedianCutQuantizer::new(2).expect("valid");
-
-        let out = q.quantize(&grid);
-        assert_eq!(out.width, 2);
-        assert_eq!(out.height, 2);
-        assert_eq!(out.pixels.len(), 4);
-
-        // Bucket-1 split: all 4 pixels share R=G=B, spread R==255 on every
-        // channel; R<G<B picks R, sort key (R,R,G,B,idx): [0,10,100,255], median
-        // idx 2 -> lower {[0,0,0],[10,10,10]} (rep [5,5,5]) + upper
-        // {[100,100,100],[255,255,255]} (rep [177,177,177]).
-        assert_eq!(
-            out.pixels,
-            vec![[5, 5, 5], [5, 5, 5], [177, 177, 177], [177, 177, 177],]
-        );
-
-        let out2 = q.quantize(&grid);
-        assert_eq!(out.pixels, out2.pixels);
+    fn palette_from(colors: &[(&str, [u8; 3])]) -> Palette {
+        Palette {
+            brand: "Test".to_string(),
+            colors: colors
+                .iter()
+                .map(|(code, rgb)| PaletteColor {
+                    code: code.to_string(),
+                    name: code.to_string(),
+                    rgb: *rgb,
+                })
+                .collect(),
+        }
     }
 
-    // 2.2 — new(0) rejected with InvalidImage mentioning "max_colors"; new(>=1)
-    // accepted; no panic.
+    fn distinct(cells: &[u16]) -> Vec<u16> {
+        let mut v = cells.to_vec();
+        v.sort_unstable();
+        v.dedup();
+        v
+    }
+
+    // 2.2 — new(0) rejected with InvalidImage("max_colors") BEFORE palette
+    // check; new(>=1) + valid palette Ok; new(>=1) + bad palette InvalidPalette.
     #[test]
-    fn new_max_colors_validation() {
-        let err = MedianCutQuantizer::new(0).expect_err("max_colors == 0 must be rejected");
-        match err {
-            BeadError::InvalidImage { reason } => assert!(
-                reason.contains("max_colors"),
-                "reason must mention max_colors, got: {reason:?}"
+    fn new_validation_order_max_colors_before_palette() {
+        let good = palette_from(&[("A", [0, 0, 0]), ("B", [255, 255, 255])]);
+        let empty = Palette {
+            brand: "E".to_string(),
+            colors: vec![],
+        };
+
+        // max_colors == 0 rejected even when palette is also illegal -> the
+        // max_colors error wins (fixed priority).
+        for pal in [&good, &empty] {
+            let err = GreedyReducer::new(pal, MatcherKind::Rgb, 0)
+                .expect_err("max_colors == 0 must be rejected");
+            match err {
+                BeadError::InvalidImage { reason } => assert!(
+                    reason.contains("max_colors"),
+                    "reason must mention max_colors, got: {reason:?}"
+                ),
+                other => panic!("expected InvalidImage, got {other:?}"),
+            }
+        }
+
+        // valid: max_colors >= 1 + valid palette.
+        assert!(GreedyReducer::new(&good, MatcherKind::Rgb, 1).is_ok());
+        assert!(GreedyReducer::new(&good, MatcherKind::Oklab, 24).is_ok());
+
+        // max_colors >= 1 but empty palette -> InvalidPalette ("no colors").
+        match GreedyReducer::new(&empty, MatcherKind::Rgb, 4) {
+            Err(BeadError::InvalidPalette { reason }) => assert!(
+                reason.contains("no colors"),
+                "reason must mention no colors, got: {reason:?}"
             ),
-            other => panic!("expected InvalidImage, got {other:?}"),
+            other => panic!("expected InvalidPalette, got {other:?}"),
         }
-        assert!(MedianCutQuantizer::new(1).is_ok());
-        assert!(MedianCutQuantizer::new(24).is_ok());
-        assert!(MedianCutQuantizer::new(u32::MAX).is_ok());
     }
 
-    // 2.3 — max_colors >= distinct color count (incl. far above) is an exact
-    // no-op via step 0 short-circuit. Includes the skewed-distribution counter
-    // example A×8, B×1 @ max_colors=4 (k=2): must still be pixel-identical —
-    // without the short-circuit this case would change colors (median-index
-    // splitting spends the budget peeling the A half, leaving a residual
-    // [A,B] bucket whose mean shifts colors).
+    // 5.1 — shape preserved; empty pattern is a verbatim no-op (no panic).
     #[test]
-    fn no_op_when_max_colors_at_or_above_distinct() {
-        let cases: Vec<(PixelGrid, u32)> = vec![(
-            PixelGrid {
-                width: 4,
-                height: 2,
-                pixels: vec![
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [10, 10, 10],
-                    [200, 200, 200],
-                ],
-            },
-            4, // k=2 distinct colors, max_colors=4 >= k
-        )];
-        for (grid, mc) in cases {
-            let q = MedianCutQuantizer::new(mc).expect("valid");
-            let out = q.quantize(&grid);
-            assert_eq!(out.pixels, grid.pixels, "must be pixel-identical no-op");
-        }
+    fn shape_preserved_and_empty_no_op() {
+        let pal = palette_from(&[
+            ("A", [0, 0, 0]),
+            ("B", [255, 255, 255]),
+            ("C", [10, 20, 30]),
+        ]);
+        let reducer = GreedyReducer::new(&pal, MatcherKind::Rgb, 1).expect("valid");
 
-        // explicit: 9-pixel grid A×8 + B×1, max_colors=4 (k=2). Verify the
-        // counter-example is a true no-op (the case that would break "stop when
-        // bucket collapses" emergence).
-        let skewed = PixelGrid {
+        let pattern = BeadPattern {
             width: 3,
-            height: 3,
-            pixels: vec![
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [10, 10, 10],
-                [200, 200, 200],
-            ],
+            height: 2,
+            cells: vec![0, 1, 2, 0, 1, 2],
         };
-        let q = MedianCutQuantizer::new(4).expect("valid");
-        let out = q.quantize(&skewed);
-        assert_eq!(
-            out.pixels, skewed.pixels,
-            "A×8,B×1 @ max_colors=4 must be no-op"
-        );
+        let out = reducer.reduce(&pattern);
+        assert_eq!(out.width, 3);
+        assert_eq!(out.height, 2);
+        assert_eq!(out.cells.len(), 6);
 
-        // above: max_colors == k as well, and far-above.
-        let q_k = MedianCutQuantizer::new(2).expect("valid");
-        assert_eq!(q_k.quantize(&skewed).pixels, skewed.pixels);
-        let q_far = MedianCutQuantizer::new(1000).expect("valid");
-        assert_eq!(q_far.quantize(&skewed).pixels, skewed.pixels);
+        // empty pattern -> returned verbatim, no panic.
+        let empty = BeadPattern {
+            width: 0,
+            height: 4,
+            cells: vec![],
+        };
+        let out_empty = reducer.reduce(&empty);
+        assert_eq!(out_empty.width, 0);
+        assert_eq!(out_empty.height, 4);
+        assert_eq!(out_empty.cells, Vec::<u16>::new());
     }
 
-    // 2.4 — 1 <= max_colors < distinct color count → output distinct count
-    // <= max_colors (upper-bound semantics, not "exactly N").
+    // 5.2 — d <= max_colors natural no-op (cell-identical); 1 <= max_colors < d
+    // upper bound holds; max_colors == 1 collapses to a single bead color.
     #[test]
-    fn upper_bound_when_n_below_distinct() {
-        let grid = PixelGrid {
-            width: 4,
-            height: 1,
-            pixels: vec![[0, 0, 0], [80, 80, 80], [160, 160, 160], [240, 240, 240]],
+    fn no_op_upper_bound_and_single() {
+        let pal = palette_from(&[
+            ("A", [0, 0, 0]),
+            ("B", [80, 80, 80]),
+            ("C", [160, 160, 160]),
+            ("D", [240, 240, 240]),
+        ]);
+        // pattern uses 3 distinct beads (0,1,3); d == 3.
+        let pattern = BeadPattern {
+            width: 3,
+            height: 2,
+            cells: vec![0, 1, 3, 0, 1, 3],
         };
-        for mc in [1u32, 2, 3] {
-            let q = MedianCutQuantizer::new(mc).expect("valid");
-            let out = q.quantize(&grid);
-            let mut cols: Vec<[u8; 3]> = out.pixels.clone();
-            cols.sort();
-            cols.dedup();
+
+        // max_colors >= d -> cell-identical no-op (d==3).
+        for mc in [3u32, 4, 100] {
+            let r = GreedyReducer::new(&pal, MatcherKind::Rgb, mc).expect("valid");
+            let out = r.reduce(&pattern);
+            assert_eq!(out.cells, pattern.cells, "max_colors={mc} must be a no-op");
+        }
+
+        // 1 <= max_colors < d -> distinct count <= max_colors.
+        for mc in [1u32, 2] {
+            let r = GreedyReducer::new(&pal, MatcherKind::Rgb, mc).expect("valid");
+            let out = r.reduce(&pattern);
             assert!(
-                cols.len() <= mc as usize,
-                "max_colors={} expects distinct <= {}, got {}",
-                mc,
-                mc,
-                cols.len()
+                distinct(&out.cells).len() <= mc as usize,
+                "max_colors={mc} expects distinct <= {mc}, got {}",
+                distinct(&out.cells).len()
             );
         }
+
+        // max_colors == 1 -> all cells one index.
+        let r1 = GreedyReducer::new(&pal, MatcherKind::Rgb, 1).expect("valid");
+        let out1 = r1.reduce(&pattern);
+        assert_eq!(
+            distinct(&out1.cells).len(),
+            1,
+            "max_colors==1 -> single bead"
+        );
     }
 
-    // 2.5 — max_colors == 1 -> single bucket, whole-image mean color (legal,
-    // no error). Empty grid (w==0 or h==0, empty pixels) returned verbatim, no
-    // panic (no sum/count computed).
+    // full-image single color: d==1 short-circuits, verbatim, no panic.
     #[test]
-    fn single_bucket_mean_and_empty_grid_no_panic() {
-        // max_colors == 1: single bucket = all pixels, mean color.
-        let grid = PixelGrid {
+    fn all_same_color_no_op() {
+        let pal = palette_from(&[("A", [0, 0, 0]), ("B", [255, 255, 255])]);
+        let pattern = BeadPattern {
             width: 2,
+            height: 2,
+            cells: vec![1, 1, 1, 1],
+        };
+        let r = GreedyReducer::new(&pal, MatcherKind::Oklab, 1).expect("valid");
+        assert_eq!(r.reduce(&pattern).cells, vec![1, 1, 1, 1]);
+    }
+
+    // 5.3 — merges only flow between real beads: every output index appeared in
+    // the input, and no palette-external color is produced.
+    #[test]
+    fn output_indices_subset_of_input() {
+        let pal = palette_from(&[
+            ("A", [0, 0, 0]),
+            ("B", [8, 0, 0]),
+            ("C", [255, 0, 0]),
+            ("D", [247, 0, 0]),
+        ]);
+        let pattern = BeadPattern {
+            width: 7,
             height: 1,
-            pixels: vec![[0, 0, 0], [255, 255, 255]],
+            cells: vec![0, 0, 0, 1, 2, 2, 3],
         };
-        let q = MedianCutQuantizer::new(1).expect("valid");
-        let out = q.quantize(&grid);
-        assert_eq!(out.width, 2);
-        assert_eq!(out.height, 1);
-        // mean = (0+255)/2 = 127 integer-truncated.
-        assert_eq!(out.pixels, vec![[127, 127, 127], [127, 127, 127]]);
+        let input_used = distinct(&pattern.cells);
+        let r = GreedyReducer::new(&pal, MatcherKind::Rgb, 2).expect("valid");
+        let out = r.reduce(&pattern);
+        for &c in &out.cells {
+            assert!(
+                input_used.contains(&c),
+                "output index {c} not present in input {input_used:?}"
+            );
+            assert!((c as usize) < pal.colors.len(), "index {c} out of palette");
+        }
+    }
 
-        // empty grid: width==0 (any height), pixels empty -> verbatim, no panic.
-        let empty_w = PixelGrid {
-            width: 0,
-            height: 5,
-            pixels: vec![],
+    // 5.4 + 5.5 — RGB cross-arch bit-exact hardcoded golden (the spec's two
+    // concrete merge examples), plus determinism (repeated reduce byte-equal).
+    #[test]
+    fn rgb_golden_and_determinism() {
+        // Example 1 (sacrifice tie -> larger index). c0=(0,0,0) c1=(8,0,0)
+        // c2=(255,0,0) c3=(247,0,0), Rgb, max_colors=2.
+        // cells=[0,0,0,1,2,2,3] -> [0,0,0,0,2,2,2].
+        // ponytail: 整数度量跨架构位精确，可硬编码 golden（arm64 == x86_64）
+        let pal1 = palette_from(&[
+            ("c0", [0, 0, 0]),
+            ("c1", [8, 0, 0]),
+            ("c2", [255, 0, 0]),
+            ("c3", [247, 0, 0]),
+        ]);
+        let p1 = BeadPattern {
+            width: 7,
+            height: 1,
+            cells: vec![0, 0, 0, 1, 2, 2, 3],
         };
-        let q = MedianCutQuantizer::new(8).expect("valid");
-        let out_w = q.quantize(&empty_w);
-        assert_eq!(out_w.width, 0);
-        assert_eq!(out_w.height, 5);
-        assert_eq!(out_w.pixels, Vec::<[u8; 3]>::new());
+        let r1 = GreedyReducer::new(&pal1, MatcherKind::Rgb, 2).expect("valid");
+        let out1 = r1.reduce(&p1);
+        assert_eq!(out1.cells, vec![0, 0, 0, 0, 2, 2, 2]);
+        assert_eq!(out1.width, 7);
+        assert_eq!(out1.height, 1);
+        // determinism: repeated reduce is byte-identical.
+        assert_eq!(r1.reduce(&p1).cells, out1.cells);
 
-        // empty grid: height==0.
-        let empty_h = PixelGrid {
+        // Example 2 (target tie -> smaller index). c0=(0,0,0) c1=(10,0,0)
+        // c2=(20,0,0), Rgb, max_colors=2. cells=[0,0,2,2,1] -> [0,0,2,2,0].
+        let pal2 = palette_from(&[("c0", [0, 0, 0]), ("c1", [10, 0, 0]), ("c2", [20, 0, 0])]);
+        let p2 = BeadPattern {
             width: 5,
-            height: 0,
-            pixels: vec![],
+            height: 1,
+            cells: vec![0, 0, 2, 2, 1],
         };
-        let out_h = q.quantize(&empty_h);
-        assert_eq!(out_h.width, 5);
-        assert_eq!(out_h.height, 0);
-        assert_eq!(out_h.pixels, Vec::<[u8; 3]>::new());
+        let r2 = GreedyReducer::new(&pal2, MatcherKind::Rgb, 2).expect("valid");
+        let out2 = r2.reduce(&p2);
+        assert_eq!(out2.cells, vec![0, 0, 2, 2, 0]);
+        assert_eq!(r2.reduce(&p2).cells, out2.cells);
+    }
+
+    // 5.5 — Lab/Oklab path same-machine determinism (repeated reduce byte-equal).
+    #[test]
+    fn perceptual_same_machine_determinism() {
+        let pal = palette_from(&[
+            ("BLACK", [0, 0, 0]),
+            ("WHITE", [255, 255, 255]),
+            ("RED", [255, 0, 0]),
+            ("GREEN", [0, 255, 0]),
+            ("BLUE", [0, 0, 255]),
+        ]);
+        let pattern = BeadPattern {
+            width: 3,
+            height: 2,
+            cells: vec![0, 1, 2, 3, 4, 2],
+        };
+        for kind in [MatcherKind::Lab, MatcherKind::Oklab] {
+            let r = GreedyReducer::new(&pal, kind, 2).expect("valid");
+            let first = r.reduce(&pattern);
+            let second = r.reduce(&pattern);
+            assert_eq!(first.cells, second.cells, "{kind:?} must be byte-stable");
+            assert!(distinct(&first.cells).len() <= 2);
+        }
+    }
+
+    // 5.6 — selection equivalence: the target the reducer picks for a sacrifice
+    // among a set of retained colors equals `find_best_match` of the sacrifice's
+    // RGB over a sub-palette holding exactly those retained colors (relative
+    // order preserved so the lowest-index tie agrees across both). Guards
+    // "reduce-nearest == match-nearest" against conversion drift. Only uses the
+    // exposed `find_best_match`.
+    #[test]
+    fn reduce_nearest_equals_match_nearest() {
+        // Full palette; sacrifice = index 4, retained = {0,1,2,3} (kept in
+        // relative order). One merge (max_colors=4, d=5) forces exactly that
+        // sacrifice (index 4 is least-used: usage 1 vs 2 for the rest) and the
+        // reducer's target must equal find_best_match over the sub-palette.
+        let colors: [(&str, [u8; 3]); 5] = [
+            ("k0", [0, 0, 0]),
+            ("k1", [60, 60, 60]),
+            ("k2", [120, 120, 120]),
+            ("k3", [200, 30, 30]),
+            ("sac", [90, 88, 92]),
+        ];
+        let pal = palette_from(&colors);
+        // usage: 0..3 each twice, index 4 once -> sacrifice is index 4.
+        let pattern = BeadPattern {
+            width: 3,
+            height: 3,
+            cells: vec![0, 0, 1, 1, 2, 2, 3, 3, 4],
+        };
+        let sub = palette_from(&colors[0..4]); // retained, relative order preserved
+        let sac_rgb = colors[4].1;
+
+        for kind in [MatcherKind::Rgb, MatcherKind::Lab, MatcherKind::Oklab] {
+            let r = GreedyReducer::new(&pal, kind, 4).expect("valid");
+            let out = r.reduce(&pattern);
+            // sacrifice (index 4) is gone; the cell it occupied now holds the
+            // reducer's chosen target.
+            let reducer_target = out.cells[8];
+            assert!(reducer_target < 4, "target must be a retained color");
+
+            // find_best_match over the sub-palette, same matcher kind.
+            let sub_target = match kind {
+                MatcherKind::Rgb => RgbMatcher::new(&sub).unwrap().find_best_match(sac_rgb),
+                MatcherKind::Lab => crate::matcher::LabMatcher::new(&sub)
+                    .unwrap()
+                    .find_best_match(sac_rgb),
+                MatcherKind::Oklab => crate::matcher::OklabMatcher::new(&sub)
+                    .unwrap()
+                    .find_best_match(sac_rgb),
+            };
+            assert_eq!(
+                reducer_target, sub_target,
+                "{kind:?}: reduce target {reducer_target} must equal find_best_match {sub_target}"
+            );
+        }
     }
 }
