@@ -4,8 +4,8 @@
 //! Zero business logic (CLAUDE rule 4): the bridge calls only `load_palette`,
 //! `generate_pattern`, and `pattern_json` — never an internal pipeline stage,
 //! and never re-assembles the image→match→stats→render flow. The M8 boundary is
-//! `width` / `height` only; `filter` / `cell_size` / `shape` are not caller
-//! options — they take the engine `Default` exactly as the CLI does.
+//! `width` / `height` only; `filter` / `cell_size` / `shape` / `matcher` are
+//! not caller options — they take the engine `Default` exactly as the CLI does.
 
 use bead_core::pipeline::pattern_json;
 use bead_core::{generate_pattern, load_palette, GenerateOptions};
@@ -77,8 +77,8 @@ pub struct GenerateOutput {
 /// 1. `load_palette(palette_json.as_bytes())` — `load_palette` takes `&[u8]`, so
 ///    the JSON `String` is passed as its UTF-8 bytes,
 /// 2. builds `GenerateOptions { width, height, ..Default::default() }` — the
-///    **exact** construction the CLI uses (filter/cell_size/shape = engine
-///    default Lanczos3/10/Square),
+///    **exact** construction the CLI uses (filter/cell_size/shape/matcher =
+///    engine default Lanczos3/10/Square/Oklab),
 /// 3. calls `generate_pattern`, then `pattern_json` on the result.
 ///
 /// On any failure the `BeadError` is flattened to its `Display` string at the

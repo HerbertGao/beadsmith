@@ -16,7 +16,9 @@
 //! `String`. Persisting any of it is the frontend's job.
 
 use crate::image::{image_to_grid, ResizeOptions};
-use crate::matcher::{match_pattern, LabMatcher};
+use crate::matcher::{
+    match_pattern, ColorMatcher, LabMatcher, MatcherKind, OklabMatcher, RgbMatcher,
+};
 use crate::models::{BeadPattern, ColorStat};
 use crate::palette::Palette;
 use crate::quantizer::{MedianCutQuantizer, Quantizer};
@@ -25,19 +27,20 @@ use crate::statistics::{count_colors, generate_summary, total_beads};
 use crate::BeadError;
 
 /// Options for [`generate_pattern`]: target grid dimensions plus the resize,
-/// optional color-reduction, and render sub-options. `width` / `height` are the
-/// bead-grid size in cells.
+/// optional color-reduction, matcher, and render sub-options. `width` /
+/// `height` are the bead-grid size in cells.
 ///
 /// Plain `Default` (no `#[non_exhaustive]`, design D3): callers construct it
 /// with struct-update syntax, e.g. `GenerateOptions { width, height,
 /// ..Default::default() }`. `max_colors` defaults to `None` (no color
-/// reduction — the grid passes through to matching verbatim); `Some(n)` runs
-/// [`MedianCutQuantizer`] after `image_to_grid` and before `match_pattern`,
-/// reducing the grid to ≤`n` representative colors. `Some(0)` is rejected
-/// inside `generate_pattern` by `MedianCutQuantizer::new` (reuses
-/// `BeadError::InvalidImage`, no new variant), not by `GenerateOptions` itself.
+/// reduction — the grid passes through to matching verbatim), and `matcher`
+/// defaults to [`MatcherKind::Oklab`]. `Some(n)` runs [`MedianCutQuantizer`]
+/// after `image_to_grid` and before `match_pattern`, reducing the grid to ≤`n`
+/// representative colors. `Some(0)` is rejected inside `generate_pattern` by
+/// `MedianCutQuantizer::new` (reuses `BeadError::InvalidImage`, no new
+/// variant), not by `GenerateOptions` itself.
 // ponytail: Default 的 0×0 非「能跑配置」、是 ..default() 填充便利；维度非法由 image_to_grid 既有 0-守卫干净返 Err、不 panic。
-// derive(Default) 即产 width:0/height:0/resize:Default(Lanczos3)/render:Default(cell_size 10)/max_colors:None，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
+// derive(Default) 即产 width:0/height:0/resize:Default(Lanczos3)/render:Default(cell_size 10)/max_colors:None/matcher:Default(Oklab)，恰是 D3 钉的默认值——用 derive、不手写 impl（更地道、无需 clippy allow）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct GenerateOptions {
     /// Target grid width in cells.
@@ -53,6 +56,8 @@ pub struct GenerateOptions {
     /// `None` (the default) skips the stage so the grid reaches matching
     /// verbatim (byte-identical to the pre-reduction pipeline).
     pub max_colors: Option<u32>,
+    /// Matcher implementation used for color matching. Defaults to Oklab.
+    pub matcher: MatcherKind,
 }
 
 /// The full result of [`generate_pattern`]: the source-of-truth pattern, its
@@ -88,10 +93,11 @@ pub struct GenerateResult {
 /// `image_to_grid` → optional color reduction (when `opts.max_colors ==
 /// Some(n)`, `MedianCutQuantizer::new(n)?.quantize(&grid)`; when `None`, the
 /// stage is skipped and the grid is passed through verbatim — byte-identical
-/// to the pre-reduction pipeline) → `LabMatcher::new(palette)` →
-/// `match_pattern` → `count_colors` / `generate_summary` → `render_preview` /
-/// `render_grid`. Errors from any stage propagate via `?` as their existing
-/// [`BeadError`] variant — no new variant is introduced (design D7). In
+/// to the pre-reduction pipeline) → selected matcher (`RgbMatcher`,
+/// `LabMatcher`, or default `OklabMatcher`) → `match_pattern` →
+/// `count_colors` / `generate_summary` → `render_preview` / `render_grid`.
+/// Errors from any stage propagate via `?` as their existing [`BeadError`]
+/// variant — no new variant is introduced (design D7). In
 /// particular `opts.max_colors == Some(0)` surfaces `MedianCutQuantizer::new`'s
 /// `Err(InvalidImage { reason })` (reason mentions "max_colors"), before any
 /// matching or rendering.
@@ -105,8 +111,12 @@ pub fn generate_pattern(
         Some(n) => MedianCutQuantizer::new(n)?.quantize(&grid),
         None => grid,
     };
-    let m = LabMatcher::new(palette)?;
-    let pattern = match_pattern(&grid, &m);
+    let matcher: Box<dyn ColorMatcher> = match opts.matcher {
+        MatcherKind::Rgb => Box::new(RgbMatcher::new(palette)?),
+        MatcherKind::Lab => Box::new(LabMatcher::new(palette)?),
+        MatcherKind::Oklab => Box::new(OklabMatcher::new(palette)?),
+    };
+    let pattern = match_pattern(&grid, matcher.as_ref());
     let stats = count_colors(&pattern, palette);
     let summary = generate_summary(&pattern, palette);
     let preview_png = render_preview(&pattern, palette, &opts.render)?;
@@ -222,6 +232,91 @@ mod tests {
         }
     }
 
+    fn matcher_for_kind(
+        kind: MatcherKind,
+        palette: &Palette,
+    ) -> Result<Box<dyn ColorMatcher>, BeadError> {
+        match kind {
+            MatcherKind::Rgb => Ok(Box::new(RgbMatcher::new(palette)?)),
+            MatcherKind::Lab => Ok(Box::new(LabMatcher::new(palette)?)),
+            MatcherKind::Oklab => Ok(Box::new(OklabMatcher::new(palette)?)),
+        }
+    }
+
+    #[test]
+    fn generate_options_default_fills_sub_options_and_matcher() {
+        let opts = GenerateOptions {
+            width: 7,
+            height: 9,
+            ..Default::default()
+        };
+
+        assert_eq!(opts.width, 7);
+        assert_eq!(opts.height, 9);
+        assert_eq!(opts.resize, ResizeOptions::default());
+        assert_eq!(opts.render, RenderOptions::default());
+        assert_eq!(opts.max_colors, None);
+        assert_eq!(MatcherKind::default(), MatcherKind::Oklab);
+        assert_eq!(opts.matcher, MatcherKind::Oklab);
+    }
+
+    #[test]
+    fn default_generate_pattern_matches_explicit_oklab() {
+        let palette = demo_palette();
+        let (w, h) = (10u32, 12u32);
+        let bytes = demo_png(20, 24);
+
+        let default_opts = demo_opts(w, h);
+        let explicit_oklab_opts = GenerateOptions {
+            matcher: MatcherKind::Oklab,
+            ..demo_opts(w, h)
+        };
+
+        let default =
+            generate_pattern(&bytes, &palette, &default_opts).expect("default must succeed");
+        let explicit = generate_pattern(&bytes, &palette, &explicit_oklab_opts)
+            .expect("explicit Oklab must succeed");
+
+        assert_eq!(default.pattern, explicit.pattern);
+        assert_eq!(default.stats, explicit.stats);
+        assert_eq!(default.summary, explicit.summary);
+        assert_eq!(default.brand, explicit.brand);
+        assert_eq!(default.preview_png, explicit.preview_png);
+        assert_eq!(default.grid_png, explicit.grid_png);
+    }
+
+    #[test]
+    fn explicit_matcher_kinds_generate_valid_patterns() {
+        let palette = demo_palette();
+        let (w, h) = (9u32, 11u32);
+        let bytes = demo_png(18, 22);
+
+        for matcher in [MatcherKind::Rgb, MatcherKind::Lab, MatcherKind::Oklab] {
+            let opts = GenerateOptions {
+                width: w,
+                height: h,
+                matcher,
+                ..Default::default()
+            };
+            let result = generate_pattern(&bytes, &palette, &opts).expect("matcher must generate");
+
+            assert_eq!(result.pattern.width, w, "matcher {matcher:?}");
+            assert_eq!(result.pattern.height, h, "matcher {matcher:?}");
+            assert_eq!(result.pattern.cells.len() as u32, w * h);
+            assert!(
+                result
+                    .pattern
+                    .cells
+                    .iter()
+                    .all(|&idx| (idx as usize) < palette.colors.len()),
+                "matcher {matcher:?} must only emit palette indices"
+            );
+            assert_eq!(total_beads(&result.pattern), w * h);
+            assert!(!result.preview_png.is_empty());
+            assert!(!result.grid_png.is_empty());
+        }
+    }
+
     // ---- 6.1 ------------------------------------------------------------------
 
     // generate_pattern faithfully chains the primitives: its result equals
@@ -244,8 +339,8 @@ mod tests {
         // Re-run each primitive individually and compare one-for-one — proving the
         // pipeline introduces no difference.
         let grid = image_to_grid(&bytes, w, h, &opts.resize).expect("grid");
-        let m = LabMatcher::new(&palette).expect("matcher");
-        let expected_pattern = match_pattern(&grid, &m);
+        let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
+        let expected_pattern = match_pattern(&grid, matcher.as_ref());
         let expected_stats = count_colors(&expected_pattern, &palette);
         let expected_summary = generate_summary(&expected_pattern, &palette);
         let expected_preview =
@@ -405,6 +500,64 @@ mod tests {
         assert_eq!(json, pattern_json(&result));
     }
 
+    #[test]
+    fn pattern_json_counts_hold_without_matcher_provenance_for_each_matcher() {
+        let palette = demo_palette();
+        let (w, h) = (8u32, 9u32);
+        let bytes = demo_png(16, 18);
+
+        for matcher in [MatcherKind::Rgb, MatcherKind::Lab, MatcherKind::Oklab] {
+            let opts = GenerateOptions {
+                width: w,
+                height: h,
+                matcher,
+                ..Default::default()
+            };
+            let result = generate_pattern(&bytes, &palette, &opts).expect("generate must succeed");
+            let json = pattern_json(&result);
+            let value: serde_json::Value =
+                serde_json::from_str(&json).expect("pattern_json must produce valid JSON");
+            let obj = value.as_object().expect("top-level JSON must be an object");
+
+            assert!(
+                !obj.contains_key("matcher"),
+                "pattern.json must not write matcher provenance"
+            );
+            assert_eq!(
+                obj.len(),
+                6,
+                "pattern.json must keep the six-key shape for matcher {matcher:?}"
+            );
+
+            let cells = obj["cells"].as_array().expect("cells must be an array");
+            assert!(
+                cells.iter().all(|cell| {
+                    cell.as_u64()
+                        .is_some_and(|idx| idx < palette.colors.len() as u64)
+                }),
+                "matcher {matcher:?} must emit cells in the selected palette snapshot"
+            );
+
+            let total = obj["total"].as_u64().expect("total must be an integer");
+            assert_eq!(total, cells.len() as u64, "matcher {matcher:?}");
+            assert_eq!(total, (w * h) as u64, "matcher {matcher:?}");
+
+            let stats = obj["stats"].as_array().expect("stats must be an array");
+            let sum = stats
+                .iter()
+                .map(|stat| {
+                    stat["count"]
+                        .as_u64()
+                        .expect("stat count must be an integer")
+                })
+                .sum::<u64>();
+            assert_eq!(
+                sum, total,
+                "Σ stats.count must equal total for matcher {matcher:?}"
+            );
+        }
+    }
+
     // ---- 6.4 ------------------------------------------------------------------
 
     // models_serialize: ColorStat and BeadPattern serialize successfully with the
@@ -443,7 +596,7 @@ mod tests {
     // Errors pass through unchanged: bad image bytes -> ImageDecode; zero target
     // dimension -> InvalidImage (not panic) with a reason from image_to_grid's
     // own target-dimension guard (proving failure precedes match/render); an
-    // invalid palette -> the corresponding BeadError (D10.4).
+    // invalid palette -> the corresponding BeadError for every matcher (D10.4).
     #[test]
     fn pipeline_errors_passthrough() {
         let palette = demo_palette();
@@ -479,17 +632,26 @@ mod tests {
             other => panic!("expected InvalidImage, got {other:?}"),
         }
 
-        // ③ invalid palette (empty colors) -> InvalidPalette via LabMatcher::new.
+        // ③ invalid palette (empty colors) -> InvalidPalette via the selected matcher.
         let empty_palette = Palette {
             brand: "Empty".to_string(),
             colors: vec![],
         };
-        let err = generate_pattern(&bytes, &empty_palette, &demo_opts(8, 8))
-            .expect_err("empty palette must be rejected");
-        assert!(
-            matches!(err, BeadError::InvalidPalette { .. }),
-            "expected InvalidPalette, got {err:?}"
-        );
+        for matcher in [MatcherKind::Rgb, MatcherKind::Lab, MatcherKind::Oklab] {
+            let opts = GenerateOptions {
+                matcher,
+                ..demo_opts(8, 8)
+            };
+            let err = generate_pattern(&bytes, &empty_palette, &opts)
+                .expect_err("empty palette must be rejected");
+            match err {
+                BeadError::InvalidPalette { reason } => assert!(
+                    reason.contains("no colors"),
+                    "reason must mention no colors for matcher {matcher:?}, got: {reason:?}"
+                ),
+                other => panic!("expected InvalidPalette for matcher {matcher:?}, got {other:?}"),
+            }
+        }
     }
 
     // ---- 6.6 ------------------------------------------------------------------
@@ -629,9 +791,9 @@ mod tests {
             "quantized grid must be reduced to <= {n} colors, got {quantized_distinct}"
         );
 
-        let matcher = LabMatcher::new(&palette).expect("matcher");
-        let expected = match_pattern(&quantized_grid, &matcher);
-        let baseline = match_pattern(&grid, &matcher);
+        let matcher = matcher_for_kind(opts.matcher, &palette).expect("matcher");
+        let expected = match_pattern(&quantized_grid, matcher.as_ref());
+        let baseline = match_pattern(&grid, matcher.as_ref());
         assert_ne!(
             expected, baseline,
             "fixture must make the reduction stage observable"

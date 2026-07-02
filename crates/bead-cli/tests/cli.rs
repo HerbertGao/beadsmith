@@ -184,6 +184,81 @@ fn cli_generate_and_palette_subcommands() {
     let _ = fs::remove_dir_all(&work);
 }
 
+#[test]
+fn cli_generate_matcher_flag_accepts_known_values_and_rejects_unknown() {
+    let work = scratch("cli-matcher");
+    let input = asset("samples/gradient.png");
+    let good_palette = asset("palettes/artkal_s.json");
+
+    for matcher in ["rgb", "lab", "oklab"] {
+        let out = work.join(format!("m-{matcher}"));
+        let r = Command::new(BIN)
+            .args(["generate", "--input"])
+            .arg(&input)
+            .arg("--palette")
+            .arg(&good_palette)
+            .args(["--width", "16", "--height", "20", "--output"])
+            .arg(&out)
+            .args(["--matcher", matcher])
+            .output()
+            .expect("run generate with matcher");
+
+        assert!(
+            r.status.success(),
+            "generate --matcher {matcher} must succeed: {:?}",
+            String::from_utf8_lossy(&r.stderr)
+        );
+        assert!(
+            out.join("preview.png").exists(),
+            "preview.png must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("grid.png").exists(),
+            "grid.png must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("pattern.json").exists(),
+            "pattern.json must exist for matcher {matcher}"
+        );
+        assert!(
+            out.join("summary.txt").exists(),
+            "summary.txt must exist for matcher {matcher}"
+        );
+    }
+
+    let bad_out = work.join("invalid");
+    let bad = Command::new(BIN)
+        .args(["generate", "--input"])
+        .arg(&input)
+        .arg("--palette")
+        .arg(&good_palette)
+        .args(["--width", "16", "--height", "20", "--output"])
+        .arg(&bad_out)
+        .args(["--matcher", "hsv"])
+        .output()
+        .expect("run generate with invalid matcher");
+
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "invalid matcher should exit 2: {:?}",
+        bad.status.code()
+    );
+    assert!(
+        !bad.status.success(),
+        "invalid matcher should be non-success"
+    );
+    let stderr = String::from_utf8_lossy(&bad.stderr).to_lowercase();
+    assert!(stderr.contains("possible values"));
+    assert!(stderr.contains("rgb") && stderr.contains("lab") && stderr.contains("oklab"));
+    assert!(
+        !bad_out.exists(),
+        "invalid matcher should not create output path"
+    );
+
+    let _ = fs::remove_dir_all(&work);
+}
+
 /// 4.3 — `--max-colors N` limits the output bead color count to ≤ N (exit 0,
 /// four non-empty files, summary color lines ≤ N); `--max-colors 0` exits
 /// non-zero (1, not panic=101) with a contextual stderr message. Same fixture

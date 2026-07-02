@@ -11,8 +11,8 @@
 //! Cross-platform posture (design D1): byte golden is asserted **only on the
 //! canonical platform (arm64 Linux; CI reference ubuntu-24.04-arm)** because the
 //! default `Lanczos3` resize weights go through `f32::sin` and the default
-//! `LabMatcher` (CIELAB + ΔE76) goes through `cbrt`/`powf`, whose ULP is not
-//! guaranteed identical across architectures / libm implementations. The other
+//! `OklabMatcher` (and `LabMatcher`) goes through `cbrt`/`powf`, whose ULP is
+//! not guaranteed identical across architectures / libm implementations. The other
 //! platforms (x86-64 Linux, macOS, Windows) run the same tests but only assert
 //! float-independent structural invariants (`golden_structure_*`).
 //!
@@ -27,7 +27,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use bead_core::pipeline::pattern_json;
-use bead_core::{decode_image, generate_pattern, load_palette, total_beads, GenerateOptions};
+use bead_core::{
+    decode_image, generate_pattern, load_palette, total_beads, GenerateOptions, MatcherKind,
+};
 
 /// A repo-root-relative path, resolved from the package manifest dir
 /// (`CARGO_MANIFEST_DIR` == `crates/bead-cli`; two levels up is the repo root) —
@@ -43,8 +45,8 @@ fn repo_root(rel: &str) -> PathBuf {
 /// Fixed input (design D4): committed 32×40 `samples/gradient.png` resized **to**
 /// 16×20 (`16:20 == 32:40`, so the center crop is a no-op — the fixture is not
 /// regenerated), `palettes/artkal_s.json`, and `GenerateOptions { width: 16,
-/// height: 20, .. }` whose `Default` supplies the real `Lanczos3` filter and
-/// `cell_size 10` (no CLI flag, design D4).
+/// height: 20, .. }` whose `Default` supplies the real `Lanczos3` filter,
+/// `cell_size 10`, and matcher `Oklab` (no CLI flag, design D4).
 fn fixed_result() -> bead_core::GenerateResult {
     let img_bytes = fs::read(repo_root("samples/gradient.png")).expect("read samples/gradient.png");
     let pal_bytes =
@@ -55,6 +57,7 @@ fn fixed_result() -> bead_core::GenerateResult {
         height: 20,
         ..Default::default()
     };
+    assert_eq!(opts.matcher, MatcherKind::Oklab);
     generate_pattern(&img_bytes, &palette, &opts).expect("generate_pattern on fixed input")
 }
 

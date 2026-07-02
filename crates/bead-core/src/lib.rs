@@ -13,7 +13,7 @@ pub mod renderer;
 pub mod statistics;
 
 pub use image::{crop_center, decode_image, image_to_grid, resize_image, ResizeOptions};
-pub use matcher::{match_pattern, ColorMatcher, RgbMatcher};
+pub use matcher::{match_pattern, ColorMatcher, MatcherKind, OklabMatcher, RgbMatcher};
 pub use models::{BeadPattern, ColorStat, PixelGrid};
 pub use palette::{load_palette, validate_palette, Palette, PaletteColor};
 pub use pipeline::{generate_pattern, GenerateOptions, GenerateResult};

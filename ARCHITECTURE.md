@@ -74,11 +74,12 @@ Scope (clarified at M7): "identical output for identical input" is
 **per-platform / per-architecture / per-`image`-version**. Pure-integer paths
 (`RgbMatcher`, statistics, renderer geometry) are bit-identical across
 architectures; the floating-point paths — the `Lanczos3` resize (its weights run
-`f32::sin`) and the default `LabMatcher` (CIELAB + ΔE76, `cbrt`/`powf`) — are
-**not** guaranteed bit-identical across architectures / libm. Golden byte-freezing is
-therefore canonical-only on arm64 Linux (CI `ubuntu-24.04-arm`); other platforms
-verify float-independent structural invariants. This is exactly what the golden
-tests and the future "CLI == FFI" (same-device) check require.
+`f32::sin`) and the default `OklabMatcher` (plus `LabMatcher`, both with
+`cbrt`/`powf`) — are **not** guaranteed bit-identical across architectures /
+libm. Golden byte-freezing is therefore canonical-only on arm64 Linux (CI
+`ubuntu-24.04-arm`); other platforms verify float-independent structural
+invariants. This is exactly what the golden tests and the same-device "CLI ==
+FFI" check require.
 
 ---
 
@@ -155,7 +156,8 @@ pub trait Quantizer {
 Maps image colors to real bead colors. One of the most important modules.
 
 - **Phase 1:** RGB Euclidean distance (`RgbMatcher`)
-- **Phase 3:** CIELAB (Lab color space), distance via Delta E (`LabMatcher`) — implemented as the default
+- **Phase 3:** Oklab (OKLab color space), distance via Delta E OK (`OklabMatcher`) — implemented as the
+  default; `LabMatcher` remains available as an optional matcher.
 
 ```rust
 pub trait ColorMatcher {

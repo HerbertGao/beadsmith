@@ -1,7 +1,7 @@
 # tests/golden/
 
 Committed byte golden masters that freeze the current default engine's output
-(`Lanczos3` resize + `LabMatcher`; milestone M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
+(`Lanczos3` resize + `OklabMatcher`; milestone M7). They turn determinism (CLAUDE.md rule 2) from a documented promise into an
 executable CI gate: an intentional algorithm change — or a dependency bump that
 changes output bytes — fails loudly here instead of drifting silently.
 
@@ -20,6 +20,7 @@ Changing any of these changes the masters — the settings are part of the golde
 - **Resize:** to **16x20**, filter **Lanczos3** (the real engine default — the
   path users actually get; not a stand-in like `Nearest`).
 - **Cell size:** `cell_size 10`.
+- **Matcher:** `MatcherKind::default() == Oklab`.
 - **Palette:** `palettes/artkal_s.json` (`artkal_s`).
 
 The fixture is the committed 32x40 `gradient.png` scaled **to** 16x20. Because
@@ -42,7 +43,7 @@ test's `BLESS` regeneration path (see `crates/bead-cli/tests/golden.rs`):
 
 The byte masters are valid **only on the canonical platform (arm64 Linux; CI
 reference runner = `ubuntu-24.04-arm`)**. The `Lanczos3` resize path and the
-default `LabMatcher` (CIELAB + ΔE76) run floating-point math whose cross-platform
+default `OklabMatcher` (Oklab + ΔEok²) run floating-point math whose cross-platform
 / cross-architecture bit-for-bit result is not guaranteed (the resize weight
 kernel goes through `f32::sin` and the matcher through `cbrt`/`powf`, neither
 specified to be identical across architectures / libm implementations). arm64 is

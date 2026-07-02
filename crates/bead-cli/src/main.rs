@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use bead_core::pipeline::pattern_json;
-use bead_core::{generate_pattern, load_palette, GenerateOptions};
-use clap::{Parser, Subcommand};
+use bead_core::{generate_pattern, load_palette, GenerateOptions, MatcherKind};
+use clap::{Parser, Subcommand, ValueEnum};
 
 /// Beadsmith CLI — turns images into bead patterns. Thin wrapper over
 /// `bead-core`; contains no algorithms.
@@ -35,6 +35,9 @@ enum Command {
         /// Target grid height in cells.
         #[arg(long)]
         height: u32,
+        /// Matching strategy: rgb, lab, or oklab.
+        #[arg(long, value_enum, default_value = "oklab")]
+        matcher: CliMatcher,
         /// Output directory (created if missing; files are overwritten).
         #[arg(long)]
         output: PathBuf,
@@ -73,9 +76,12 @@ fn main() -> Result<()> {
             palette,
             width,
             height,
+            matcher,
             output,
             max_colors,
-        } => generate(&input, &palette, width, height, &output, max_colors),
+        } => generate(
+            &input, &palette, width, height, matcher, &output, max_colors,
+        ),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
             // ponytail: 桩成显式非零退出，不假绿、不 panic
@@ -95,6 +101,7 @@ fn generate(
     palette: &Path,
     width: u32,
     height: u32,
+    matcher: CliMatcher,
     output: &Path,
     max_colors: Option<u32>,
 ) -> Result<()> {
@@ -108,6 +115,7 @@ fn generate(
     let opts = GenerateOptions {
         width,
         height,
+        matcher: matcher.into(),
         max_colors,
         ..Default::default()
     };
@@ -134,6 +142,23 @@ fn generate(
         .with_context(|| format!("failed to write {summary_path:?}"))?;
 
     Ok(())
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy)]
+enum CliMatcher {
+    Rgb,
+    Lab,
+    Oklab,
+}
+
+impl From<CliMatcher> for MatcherKind {
+    fn from(v: CliMatcher) -> Self {
+        match v {
+            CliMatcher::Rgb => Self::Rgb,
+            CliMatcher::Lab => Self::Lab,
+            CliMatcher::Oklab => Self::Oklab,
+        }
+    }
 }
 
 fn palette_validate(path: &Path) -> Result<()> {
