@@ -202,6 +202,39 @@ the default `Staged` output and its golden are unchanged unless noted.
 
 ---
 
+## Post-M9 — Mobile UI Refinement
+
+Frontend-only polish of the M9 four-screen flow, plus surfacing the engine knobs
+that already exist but the app can't reach. **No new engine algorithms;
+determinism unaffected** — UI work + option pass-through only. Spec-driven via
+OpenSpec, and splittable into the three workstreams below, each shippable on its
+own (the settings controls depend on the FFI widening landing first).
+
+Design direction — *"pegboard workshop"*: neutral violet-grey chrome so the bead
+colors carry the page, rounded bead-like controls, bead codes/counts set in a
+mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
+`#F4F3F7`, line `#E6E3EF`. Pitch mockup:
+<https://claude.ai/code/artifact/e80e77a4-c7f0-461e-864c-75fa41c4c144>.
+
+- **Cropper upgrade** — replace `crop_your_image` with `pro_image_editor` for
+  aspect-ratio presets (square / 3:4 / 9:16 …), rotate, and flip, themed to the
+  tokens; keep the `Uint8List` cropped-bytes hand-off (no file-path rewrite).
+  Fallback `image_cropper` (native uCrop / TOCropViewController) if the
+  crop-rotate submodule can't be launched standalone — at the cost of native
+  chrome and no flip.
+- **Widen the FFI boundary** — pass `max_colors` / `despeckle` / `generator`
+  (`staged|gerstner`) through `generate`; **supersedes the deliberate M8
+  "width/height only" boundary**. Engine side is already done (see the engine
+  Post-M9 above); the Settings-screen controls are dead until this lands.
+- **Four-screen restyle** — Home / Crop / Settings / Result rebuilt on the tokens
+  above, plus dark mode. Result still derives its stats/legend **verbatim from
+  `GenerateOutput`**, never from the rendered image (hard rule).
+
+> Store release engineering (signing, icons, store metadata, upload) stays
+> deferred (see M9 **Status**) — separate from this UI pass.
+
+---
+
 ## Notes
 
 - **Determinism is a gate, not a nicety.** Every milestone from M2 on must
