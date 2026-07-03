@@ -203,6 +203,7 @@ class _CropFrameState extends State<CropFrame> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Expanded(
@@ -268,7 +269,14 @@ class _CropFrameState extends State<CropFrame> {
                     ),
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: CustomPaint(painter: _MaskPainter(frame)),
+                        child: CustomPaint(
+                          painter: _MaskPainter(
+                            frame,
+                            scrim: scheme.scrim.withValues(alpha: 0.54),
+                            grid: scheme.onSurface.withValues(alpha: 0.5),
+                            bracket: scheme.primary,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -316,44 +324,56 @@ class _CropFrameState extends State<CropFrame> {
 /// Dims everything outside [frame], then draws the rule-of-thirds grid and
 /// bright corner brackets over the frame.
 class _MaskPainter extends CustomPainter {
-  _MaskPainter(this.frame);
+  _MaskPainter(
+    this.frame, {
+    required this.scrim,
+    required this.grid,
+    required this.bracket,
+  });
   final Rect frame;
+  final Color scrim;
+  final Color grid;
+  final Color bracket;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scrim = Path()..addRect(Offset.zero & size);
+    final scrimPath = Path()..addRect(Offset.zero & size);
     final hole = Path()..addRect(frame);
     canvas.drawPath(
-      Path.combine(PathOperation.difference, scrim, hole),
-      Paint()..color = Colors.black54,
+      Path.combine(PathOperation.difference, scrimPath, hole),
+      Paint()..color = scrim,
     );
 
-    final grid = Paint()
-      ..color = Colors.white54
+    final gridPaint = Paint()
+      ..color = grid
       ..strokeWidth = 1;
     for (var i = 1; i < 3; i++) {
       final dx = frame.left + frame.width * i / 3;
       final dy = frame.top + frame.height * i / 3;
-      canvas.drawLine(Offset(dx, frame.top), Offset(dx, frame.bottom), grid);
-      canvas.drawLine(Offset(frame.left, dy), Offset(frame.right, dy), grid);
+      canvas.drawLine(Offset(dx, frame.top), Offset(dx, frame.bottom), gridPaint);
+      canvas.drawLine(Offset(frame.left, dy), Offset(frame.right, dy), gridPaint);
     }
 
-    final corner = Paint()
-      ..color = Colors.white
+    final cornerPaint = Paint()
+      ..color = bracket
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
     const len = 18.0;
-    void bracket(Offset o, double sx, double sy) {
-      canvas.drawLine(o, o.translate(len * sx, 0), corner);
-      canvas.drawLine(o, o.translate(0, len * sy), corner);
+    void corner(Offset o, double sx, double sy) {
+      canvas.drawLine(o, o.translate(len * sx, 0), cornerPaint);
+      canvas.drawLine(o, o.translate(0, len * sy), cornerPaint);
     }
 
-    bracket(frame.topLeft, 1, 1);
-    bracket(frame.topRight, -1, 1);
-    bracket(frame.bottomLeft, 1, -1);
-    bracket(frame.bottomRight, -1, -1);
+    corner(frame.topLeft, 1, 1);
+    corner(frame.topRight, -1, 1);
+    corner(frame.bottomLeft, 1, -1);
+    corner(frame.bottomRight, -1, -1);
   }
 
   @override
-  bool shouldRepaint(_MaskPainter old) => old.frame != frame;
+  bool shouldRepaint(_MaskPainter old) =>
+      old.frame != frame ||
+      old.scrim != scrim ||
+      old.grid != grid ||
+      old.bracket != bracket;
 }

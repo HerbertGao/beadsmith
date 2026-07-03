@@ -11,13 +11,40 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Beadsmith')),
       body: Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.photo_library),
-          label: const Text('选择图片'),
-          onPressed: () => _pick(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.grid_on, size: 56, color: scheme.primary),
+              ),
+              const SizedBox(height: 24),
+              Text('拼豆图纸生成器', style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(
+                '选一张图片，裁剪后生成拼豆图纸',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 32),
+              FilledButton.icon(
+                icon: const Icon(Icons.photo_library),
+                label: const Text('选择图片'),
+                onPressed: () => _pick(context, ref),
+              ),
+            ],
+          ),
         ),
       ),
     );
