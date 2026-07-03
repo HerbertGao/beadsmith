@@ -1,5 +1,6 @@
-//! The single bridge function exposed to Dart, plus the FRB mirrors of the
-//! `bead-core` types that cross the boundary.
+//! The single bridge function exposed to Dart, plus the boundary types that
+//! cross into Dart — plain bead-ffi DTOs for the response (`BeadPattern` /
+//! `ColorStat`), and one FRB mirror for the `GeneratorKind` argument.
 //!
 //! Zero business logic (CLAUDE rule 4): the bridge calls only `load_palette`,
 //! `generate_pattern`, and `pattern_json` — never an internal pipeline stage,
@@ -15,34 +16,40 @@ use bead_core::pipeline::pattern_json;
 use bead_core::{generate_pattern, load_palette, GenerateOptions};
 use flutter_rust_bridge::frb;
 
-// The FRB-generated glue (`frb_generated.rs`) refers to the mirrored core types
-// as `crate::api::BeadPattern` / `crate::api::ColorStat`, so they must be public
-// at this path. Re-export the real bead-core types (no DTO copy) — the mirror
-// structs below describe their field shape to FRB.
-pub use bead_core::{BeadPattern, ColorStat, GeneratorKind};
+// The FRB-generated glue (`frb_generated.rs`) refers to the boundary types as
+// `crate::api::BeadPattern` / `crate::api::ColorStat`, so they must be public at
+// this path. These are bead-ffi-owned **plain DTOs** (below), NOT `#[frb(mirror)]`
+// of the core types: a mirror type in the RESPONSE routes `generate` through an
+// FRB SSE codec path that panics on iOS (+6-byte accounting mismatch at
+// flutter_rust_bridge `codec/sse.rs:129`); a plain FRB struct marshals cleanly.
+// `GeneratorKind` stays a mirror — it only crosses as an ARGUMENT, which the bug
+// does not affect (verified by bisection).
+pub use bead_core::GeneratorKind;
 
-// ---- FRB mirrors of the bead-core types that cross the boundary -------------
+// ---- boundary types that cross into Dart (plain DTOs + one mirror arg) -------
 //
-// `BeadPattern` / `ColorStat` already derive `Clone` in bead-core (verified in
-// models/mod.rs), so the mirror needs no core change. We mirror them on the
-// bead-ffi side with FRB's `mirror` mechanism so bead-core carries no `#[frb]`
-// annotation (CLAUDE rule 1). The mirror struct fields must match the real
-// type's fields exactly; FRB uses them to generate the Dart class and the
-// marshalling code, then moves the real bead-core values across.
+// `BeadPattern` / `ColorStat` are bead-ffi-owned **plain FRB structs** (DTOs),
+// NOT `#[frb(mirror)]` of the bead-core types: a mirror type in the RESPONSE
+// routes `generate` through an FRB SSE codec path that panics on iOS (see the
+// module note + the per-DTO docs below). `generate_inner` copies the bead-core
+// fields into them 1:1; `bead-core` stays unchanged (CLAUDE rule 1). Only
+// `GeneratorKind` below stays an `#[frb(mirror)]` — it crosses solely as an
+// ARGUMENT, which the iOS panic does not affect (verified by bisection).
 
-/// FRB mirror of [`bead_core::BeadPattern`]. Fields mirror the real type
-/// (`width` / `height` / `cells`) — see `bead-core/src/models/mod.rs`.
-#[frb(mirror(BeadPattern))]
-pub struct _BeadPattern {
+/// bead-ffi boundary DTO for the pattern grid (fields copied 1:1 from
+/// [`bead_core::BeadPattern`] by `generate_inner`). A plain FRB struct, NOT a
+/// mirror — see the module note above on the iOS SSE mirror-in-response panic.
+#[derive(Debug, PartialEq)]
+pub struct BeadPattern {
     pub width: u32,
     pub height: u32,
     pub cells: Vec<u16>,
 }
 
-/// FRB mirror of [`bead_core::ColorStat`]. Fields mirror the real type
-/// (`code` / `name` / `count`).
-#[frb(mirror(ColorStat))]
-pub struct _ColorStat {
+/// bead-ffi boundary DTO for one color's stats (copied 1:1 from
+/// [`bead_core::ColorStat`]). Plain FRB struct, not a mirror (see [`BeadPattern`]).
+#[derive(Debug, PartialEq)]
+pub struct ColorStat {
     pub code: String,
     pub name: String,
     pub count: u32,
@@ -65,14 +72,15 @@ pub enum _GeneratorKind {
 /// deliberately non-`Clone` and FRB cannot mirror-move a non-`Clone` owner
 /// field-by-field through a single mirror, so the bridge function destructures
 /// the owned `GenerateResult` and reassembles its fields here. `pattern` /
-/// `stats` ride across as the mirrored structured types (not JSON strings);
-/// `pattern_json` is the separately-serialized `pattern.json` body for M9
-/// persistence (Dart must not hand-assemble it — D-Output).
+/// `stats` ride across as the plain-DTO structured types (not JSON strings, not
+/// FRB mirrors — see the module note on the iOS SSE panic); `pattern_json` is the
+/// separately-serialized `pattern.json` body for M9 persistence (Dart must not
+/// hand-assemble it — D-Output).
 #[derive(Debug)]
 pub struct GenerateOutput {
-    /// The color-matched pattern (mirrored `BeadPattern`).
+    /// The color-matched pattern (bead-ffi DTO, copied 1:1 from bead-core).
     pub pattern: BeadPattern,
-    /// Per-color statistics (mirrored `ColorStat` list).
+    /// Per-color statistics (bead-ffi DTO list, copied 1:1 from bead-core).
     pub stats: Vec<ColorStat>,
     /// The directly-copyable INIT "Summary Format" text.
     pub summary: String,
@@ -159,7 +167,8 @@ fn generate_inner(
     let result = generate_pattern(image_bytes, &palette, &opts)?;
     let pattern_json = pattern_json(&result);
 
-    // GenerateResult is non-Clone: move its fields out into our boundary DTO.
+    // GenerateResult is non-Clone: move its fields out and copy the two
+    // structured ones into our plain boundary DTOs (bead_core -> bead-ffi).
     let bead_core::GenerateResult {
         pattern,
         stats,
@@ -170,8 +179,19 @@ fn generate_inner(
     } = result;
 
     Ok(GenerateOutput {
-        pattern,
-        stats,
+        pattern: BeadPattern {
+            width: pattern.width,
+            height: pattern.height,
+            cells: pattern.cells,
+        },
+        stats: stats
+            .into_iter()
+            .map(|c| ColorStat {
+                code: c.code,
+                name: c.name,
+                count: c.count,
+            })
+            .collect(),
         summary,
         brand,
         preview_png,
@@ -429,8 +449,15 @@ mod tests {
         };
         let reference = generate_pattern(&png, &palette, &opts).expect("reference run");
 
-        assert_eq!(out.pattern, reference.pattern);
-        assert_eq!(out.stats, reference.stats);
+        // out.pattern/out.stats are the bead-ffi DTOs; compare field-wise to the
+        // bead-core reference (same values, different owning types post-DTO swap).
+        assert_eq!(out.pattern.width, reference.pattern.width);
+        assert_eq!(out.pattern.height, reference.pattern.height);
+        assert_eq!(out.pattern.cells, reference.pattern.cells);
+        assert_eq!(out.stats.len(), reference.stats.len());
+        for (a, b) in out.stats.iter().zip(&reference.stats) {
+            assert_eq!((&a.code, &a.name, a.count), (&b.code, &b.name, b.count));
+        }
         assert_eq!(out.summary, reference.summary);
         assert_eq!(out.brand, reference.brand);
         assert_eq!(out.preview_png, reference.preview_png);
