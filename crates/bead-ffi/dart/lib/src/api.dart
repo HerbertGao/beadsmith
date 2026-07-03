@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `generate_inner`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `eq`, `eq`, `fmt`, `fmt`, `fmt`
 
 /// Generate a complete bead pattern from image bytes + a palette JSON string.
 ///
@@ -51,8 +51,9 @@ Future<GenerateOutput> generate(
         despeckle: despeckle,
         generator: generator);
 
-/// FRB mirror of [`bead_core::BeadPattern`]. Fields mirror the real type
-/// (`width` / `height` / `cells`) — see `bead-core/src/models/mod.rs`.
+/// bead-ffi boundary DTO for the pattern grid (fields copied 1:1 from
+/// [`bead_core::BeadPattern`] by `generate_inner`). A plain FRB struct, NOT a
+/// mirror — see the module note above on the iOS SSE mirror-in-response panic.
 class BeadPattern {
   final int width;
   final int height;
@@ -77,8 +78,8 @@ class BeadPattern {
           cells == other.cells;
 }
 
-/// FRB mirror of [`bead_core::ColorStat`]. Fields mirror the real type
-/// (`code` / `name` / `count`).
+/// bead-ffi boundary DTO for one color's stats (copied 1:1 from
+/// [`bead_core::ColorStat`]). Plain FRB struct, not a mirror (see [`BeadPattern`]).
 class ColorStat {
   final String code;
   final String name;
@@ -109,14 +110,15 @@ class ColorStat {
 /// deliberately non-`Clone` and FRB cannot mirror-move a non-`Clone` owner
 /// field-by-field through a single mirror, so the bridge function destructures
 /// the owned `GenerateResult` and reassembles its fields here. `pattern` /
-/// `stats` ride across as the mirrored structured types (not JSON strings);
-/// `pattern_json` is the separately-serialized `pattern.json` body for M9
-/// persistence (Dart must not hand-assemble it — D-Output).
+/// `stats` ride across as the plain-DTO structured types (not JSON strings, not
+/// FRB mirrors — see the module note on the iOS SSE panic); `pattern_json` is the
+/// separately-serialized `pattern.json` body for M9 persistence (Dart must not
+/// hand-assemble it — D-Output).
 class GenerateOutput {
-  /// The color-matched pattern (mirrored `BeadPattern`).
+  /// The color-matched pattern (bead-ffi DTO, copied 1:1 from bead-core).
   final BeadPattern pattern;
 
-  /// Per-color statistics (mirrored `ColorStat` list).
+  /// Per-color statistics (bead-ffi DTO list, copied 1:1 from bead-core).
   final List<ColorStat> stats;
 
   /// The directly-copyable INIT "Summary Format" text.

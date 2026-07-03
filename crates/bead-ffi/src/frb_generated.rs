@@ -94,24 +94,6 @@ fn wire__crate__api__generate_impl(
     )
 }
 
-// Section: static_checks
-
-#[allow(clippy::unnecessary_literal_unwrap)]
-const _: fn() = || {
-    {
-        let BeadPattern = None::<crate::api::BeadPattern>.unwrap();
-        let _: u32 = BeadPattern.width;
-        let _: u32 = BeadPattern.height;
-        let _: Vec<u16> = BeadPattern.cells;
-    }
-    {
-        let ColorStat = None::<crate::api::ColorStat>.unwrap();
-        let _: String = ColorStat.code;
-        let _: String = ColorStat.name;
-        let _: u32 = ColorStat.count;
-    }
-};
-
 // Section: dart2rust
 
 impl SseDecode for String {
@@ -295,47 +277,37 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::BeadPattern> {
+impl flutter_rust_bridge::IntoDart for crate::api::BeadPattern {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.0.width.into_into_dart().into_dart(),
-            self.0.height.into_into_dart().into_dart(),
-            self.0.cells.into_into_dart().into_dart(),
+            self.width.into_into_dart().into_dart(),
+            self.height.into_into_dart().into_dart(),
+            self.cells.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for FrbWrapper<crate::api::BeadPattern>
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::BeadPattern>>
-    for crate::api::BeadPattern
-{
-    fn into_into_dart(self) -> FrbWrapper<crate::api::BeadPattern> {
-        self.into()
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::BeadPattern {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::BeadPattern> for crate::api::BeadPattern {
+    fn into_into_dart(self) -> crate::api::BeadPattern {
+        self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::ColorStat> {
+impl flutter_rust_bridge::IntoDart for crate::api::ColorStat {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.0.code.into_into_dart().into_dart(),
-            self.0.name.into_into_dart().into_dart(),
-            self.0.count.into_into_dart().into_dart(),
+            self.code.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.count.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for FrbWrapper<crate::api::ColorStat>
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::ColorStat>>
-    for crate::api::ColorStat
-{
-    fn into_into_dart(self) -> FrbWrapper<crate::api::ColorStat> {
-        self.into()
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ColorStat {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::ColorStat> for crate::api::ColorStat {
+    fn into_into_dart(self) -> crate::api::ColorStat {
+        self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs

@@ -23,6 +23,20 @@ final pickedImageProvider =
 final croppedImageProvider =
     NotifierProvider<ImageBytesNotifier, Uint8List?>(ImageBytesNotifier.new);
 
+/// The crop frame's aspect (width / height) chosen on CropPage, consumed by
+/// GeneratePage to lock the bead-grid aspect. Default = square (1.0) so a
+/// deep-link straight to /generate (bypassing crop) is still well-defined and
+/// the legacy 40×40 default stays legal.
+class CropAspectNotifier extends Notifier<double> {
+  @override
+  double build() => 1.0;
+
+  void set(double value) => state = value;
+}
+
+final cropAspectProvider =
+    NotifierProvider<CropAspectNotifier, double>(CropAspectNotifier.new);
+
 /// The last successful `GenerateOutput`, consumed by ResultPage.
 class GenerateResultNotifier extends Notifier<GenerateOutput?> {
   @override

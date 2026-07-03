@@ -216,12 +216,16 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
 `#F4F3F7`, line `#E6E3EF`. Pitch mockup:
 <https://claude.ai/code/artifact/e80e77a4-c7f0-461e-864c-75fa41c4c144>.
 
-- **Cropper upgrade** — replace `crop_your_image` with `pro_image_editor` for
-  aspect-ratio presets (square / 3:4 / 9:16 …), rotate, and flip, themed to the
-  tokens; keep the `Uint8List` cropped-bytes hand-off (no file-path rewrite).
-  Fallback `image_cropper` (native uCrop / TOCropViewController) if the
-  crop-rotate submodule can't be launched standalone — at the cost of native
-  chrome and no flip.
+- **Cropper upgrade** — replace `crop_your_image` with a **self-drawn cropper**
+  (`CropFrame` widget + pure `crop_geometry` + the `image` package): a fixed
+  aspect-ratio viewfinder over a pan/zoom (cover-min) image, aspect presets
+  (square / 2:3 / 3:4 / 4:5 / 9:16 with a portrait↔landscape swap), rotate, and
+  flip, themed to the tokens. On confirm the shell orients the decoded bytes
+  (`copyRotate` then `flipHorizontal`) and `copyCrop`s the framed rect in
+  oriented-image space — **no `RepaintBoundary.toImage`** (it fails on the iOS
+  simulator's software renderer, which killed the `pro_image_editor` route).
+  Keeps the `Uint8List` cropped-bytes hand-off (no file-path rewrite), and feeds
+  the crop aspect to the generate screen to lock the bead-grid ratio.
 - **Widen the FFI boundary** — pass `max_colors` / `despeckle` / `generator`
   (`staged|gerstner`) through `generate`; **supersedes the deliberate M8
   "width/height only" boundary**. Engine side is already done (see the engine
