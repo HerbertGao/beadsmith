@@ -21,7 +21,23 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   bool _busy = false;
   String? _error;
 
-  static const _presets = [(40, 40), (58, 58), (80, 100)];
+  // aspect = width / height, locked to the crop frame's ratio (default square).
+  late double _aspect;
+
+  // Base long sides; the paired side is derived from _aspect so no preset can
+  // violate the lock (e.g. no 80×100 under square).
+  static const _presetBases = [40, 58, 80];
+
+  static int _clampSide(int v) => v.clamp(1, 1000);
+
+  @override
+  void initState() {
+    super.initState();
+    _aspect = ref.read(cropAspectProvider);
+    // Seed height from the 40-bead default width so the initial pair obeys the
+    // lock even for a non-square crop.
+    _height.text = '${_clampSide((40 / _aspect).round())}';
+  }
 
   @override
   void dispose() {
@@ -30,9 +46,29 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
     super.dispose();
   }
 
+  List<(int, int)> get _presets {
+    final seen = <(int, int)>{};
+    for (final w in _presetBases) {
+      seen.add((w, _clampSide((w / _aspect).round())));
+    }
+    return seen.toList();
+  }
+
   void _applyPreset(int w, int h) {
     _width.text = '$w';
     _height.text = '$h';
+  }
+
+  // Editing one side auto-derives the other from _aspect. Programmatic
+  // controller writes here do NOT retrigger onChanged, so no loop guard needed.
+  void _onWidthChanged(String v) {
+    final w = int.tryParse(v.trim());
+    if (w != null) _height.text = '${_clampSide((w / _aspect).round())}';
+  }
+
+  void _onHeightChanged(String v) {
+    final h = int.tryParse(v.trim());
+    if (h != null) _width.text = '${_clampSide((h * _aspect).round())}';
   }
 
   Future<void> _generate() async {
@@ -91,6 +127,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                   child: TextField(
                     controller: _width,
                     keyboardType: TextInputType.number,
+                    onChanged: _onWidthChanged,
                     decoration: const InputDecoration(labelText: '宽 (豆)'),
                   ),
                 ),
@@ -99,6 +136,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                   child: TextField(
                     controller: _height,
                     keyboardType: TextInputType.number,
+                    onChanged: _onHeightChanged,
                     decoration: const InputDecoration(labelText: '高 (豆)'),
                   ),
                 ),

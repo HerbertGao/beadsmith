@@ -35,13 +35,15 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  # Pinned (exact, no caret) to known-good versions. crop_your_image especially:
-  # its cropped-byte return shape is a load-bearing assumption — pin guards
-  # against a version bump silently changing that API.
+  # Pinned (exact, no caret) to known-good versions — a version bump can silently
+  # change a load-bearing API shape, so pin guards against drift.
   image_picker: 1.2.2
-  crop_your_image: 2.0.0
   flutter_riverpod: 3.3.2
   go_router: 17.3.0
+
+  # Pure-Dart codec + copyRotate/flipHorizontal/copyCrop for the self-drawn
+  # cropper (apps/mobile only — must not leak into any crate). Exact-pinned.
+  image: 4.9.1
 
   # MUST equal the Cargo `=2.12.0` pin so the runtime matches the M8 glue.
   flutter_rust_bridge: 2.12.0
