@@ -15,6 +15,7 @@ class BeadTokens {
   // Light neutrals.
   static const Color lightInk = Color(0xFF1C1830); // text/data on ground
   static const Color lightGround = Color(0xFFF4F3F7); // page background
+  static const Color lightSurface = Color(0xFFFFFFFF); // cards, raised over ground
   static const Color lightLine = Color(0xFFE6E3EF); // borders/dividers
 
   // Dark neutrals (flipped; ink-on-ground ≥ 4.5:1).
@@ -83,6 +84,7 @@ final ThemeData lightTheme = _buildTheme(
     onSecondary: Colors.white,
     surface: BeadTokens.lightGround,
     onSurface: BeadTokens.lightInk,
+    surfaceContainerHighest: BeadTokens.lightSurface,
     outline: BeadTokens.lightLine,
   ),
 );

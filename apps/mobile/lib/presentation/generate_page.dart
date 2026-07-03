@@ -179,6 +179,16 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
       setState(() => _error = '宽和高需在 1–1000 之间');
       return;
     }
+    // A toggled-on option with an empty/invalid field would silently send null
+    // (= off) with no feedback — reject it. `0` is valid (reaches the engine).
+    if (_limitColors && _readU32OrNull(_maxColors.text) == null) {
+      setState(() => _error = '开了「限制颜色数」请填一个有效数值');
+      return;
+    }
+    if (_despeckleOn && _readU32OrNull(_despeckle.text) == null) {
+      setState(() => _error = '开了「去斑」请填一个有效阈值');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

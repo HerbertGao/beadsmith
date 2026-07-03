@@ -129,4 +129,27 @@ void main() {
     expect(fake.maxColors, isNull);
     expect(fake.despeckle, isNull);
   });
+
+  testWidgets('toggled-on option with empty field is rejected, not silent-off',
+      (tester) async {
+    final fake = _FakeBridge();
+    await _pumpGeneratePage(tester, fake);
+
+    // 限制颜色数 on, then clear its field → must NOT silently generate as off.
+    final sw = find.widgetWithText(SwitchListTile, '限制颜色数');
+    await tester.ensureVisible(sw);
+    await tester.tap(sw);
+    await tester.pump();
+    final field = find.widgetWithText(TextField, '最大颜色数');
+    await tester.ensureVisible(field);
+    await tester.enterText(field, '');
+
+    final generate = find.widgetWithText(FilledButton, '生成');
+    await tester.ensureVisible(generate);
+    await tester.tap(generate);
+    await tester.pumpAndSettle();
+
+    expect(fake.called, isFalse);
+    expect(find.text('开了「限制颜色数」请填一个有效数值'), findsOneWidget);
+  });
 }
