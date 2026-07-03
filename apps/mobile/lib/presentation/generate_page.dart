@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../application/providers.dart';
+import '../infrastructure/bead_bridge.dart' show GeneratorKind;
 import 'session_providers.dart';
 
 /// Fit a width×height pair to `aspect` (= width/height) with both sides in
@@ -33,17 +35,42 @@ class GeneratePage extends ConsumerStatefulWidget {
 }
 
 class _GeneratePageState extends ConsumerState<GeneratePage> {
-  final _width = TextEditingController(text: '40');
-  final _height = TextEditingController(text: '40');
+  final _width = TextEditingController(text: '50');
+  final _height = TextEditingController(text: '50');
   bool _busy = false;
   String? _error;
+
+  // Engine options as local state (like _width/_height) — settings and generate
+  // live in the same widget, so no session provider (design D3). Defaults are
+  // field-identical to the old hardcoded path: null / null / staged.
+  GeneratorKind _generator = GeneratorKind.staged;
+  bool _limitColors = false; // off ⇒ maxColors null (no limit)
+  final _maxColors = TextEditingController(text: '24');
+  bool _despeckleOn = false; // off ⇒ despeckle null
+  final _despeckle = TextEditingController(text: '2');
+
+  // Largest u32 — number inputs are constrained to non-negative and ≤ this so
+  // FRB's putUint32 can encode them; business validity (≤N beads, etc.) is the
+  // engine's call, not the shell's.
+  static const _u32Max = 4294967295;
+
+  static final _digitsOnly = FilteringTextInputFormatter.digitsOnly;
+
+  // Empty ⇒ null; otherwise clamp into representable u32 range.
+  static int? _readU32OrNull(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+    final v = int.tryParse(t);
+    if (v == null) return null;
+    return v.clamp(0, _u32Max);
+  }
 
   // aspect = width / height, locked to the crop frame's ratio (default square).
   late double _aspect;
 
   // Base long sides; the paired side is derived from _aspect so no preset can
   // violate the lock (e.g. no 80×100 under square).
-  static const _presetBases = [40, 58, 80];
+  static const _presetBases = [50, 80, 100];
 
   static int _clampSide(int v) => v.clamp(1, 1000);
 
@@ -51,15 +78,17 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   void initState() {
     super.initState();
     _aspect = ref.read(cropAspectProvider);
-    // Seed height from the 40-bead default width so the initial pair obeys the
+    // Seed height from the 50-bead default width so the initial pair obeys the
     // lock even for a non-square crop.
-    _height.text = '${_clampSide((40 / _aspect).round())}';
+    _height.text = '${_clampSide((50 / _aspect).round())}';
   }
 
   @override
   void dispose() {
     _width.dispose();
     _height.dispose();
+    _maxColors.dispose();
+    _despeckle.dispose();
     super.dispose();
   }
 
@@ -74,6 +103,42 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   void _applyPreset(int w, int h) {
     _width.text = '$w';
     _height.text = '$h';
+  }
+
+  // Tap −/+ to step a side by 1 (clamped 1..1000); re-derives the paired side
+  // through the same aspect-lock as typing.
+  void _step(TextEditingController c, int delta, void Function(String) onChanged) {
+    final next = _clampSide((int.tryParse(c.text.trim()) ?? 0) + delta);
+    c.text = '$next';
+    onChanged('$next');
+  }
+
+  Widget _sizeStepper(
+    TextEditingController c,
+    String label,
+    void Function(String) onChanged,
+  ) {
+    return Row(
+      children: [
+        IconButton.outlined(
+          onPressed: () => _step(c, -1, onChanged),
+          icon: const Icon(Icons.remove),
+        ),
+        Expanded(
+          child: TextField(
+            controller: c,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            onChanged: onChanged,
+            decoration: InputDecoration(labelText: label),
+          ),
+        ),
+        IconButton.outlined(
+          onPressed: () => _step(c, 1, onChanged),
+          icon: const Icon(Icons.add),
+        ),
+      ],
+    );
   }
 
   // Editing one side auto-derives the other from _aspect, rebasing BOTH to stay
@@ -125,6 +190,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
             paletteJson: paletteJson,
             width: width,
             height: height,
+            maxColors: _limitColors ? _readU32OrNull(_maxColors.text) : null,
+            despeckle: _despeckleOn ? _readU32OrNull(_despeckle.text) : null,
+            generator: _generator,
           );
       if (!mounted) return;
       ref.read(generateResultProvider.notifier).set(output);
@@ -137,36 +205,72 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
     }
   }
 
+  // Engine-option controls (task 3.1). Styled off theme roles only (4.3) — no
+  // hardcoded colors.
+  List<Widget> _optionControls(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context)
+        .textTheme
+        .titleSmall
+        ?.copyWith(color: scheme.onSurface);
+    return [
+      Text('生成模式', style: labelStyle),
+      const SizedBox(height: 8),
+      SegmentedButton<GeneratorKind>(
+        segments: const [
+          ButtonSegment(value: GeneratorKind.staged, label: Text('常规')),
+          ButtonSegment(value: GeneratorKind.gerstner, label: Text('照片')),
+        ],
+        selected: {_generator},
+        onSelectionChanged: (s) => setState(() => _generator = s.first),
+      ),
+      const SizedBox(height: 16),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('限制颜色数'),
+        value: _limitColors,
+        onChanged: (v) => setState(() => _limitColors = v),
+      ),
+      if (_limitColors)
+        TextField(
+          controller: _maxColors,
+          keyboardType: TextInputType.number,
+          inputFormatters: [_digitsOnly],
+          decoration: const InputDecoration(labelText: '最大颜色数'),
+        ),
+      const SizedBox(height: 16),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('去斑'),
+        subtitle: const Text('清除孤立的杂色点'),
+        value: _despeckleOn,
+        onChanged: (v) => setState(() => _despeckleOn = v),
+      ),
+      if (_despeckleOn)
+        TextField(
+          controller: _despeckle,
+          keyboardType: TextInputType.number,
+          inputFormatters: [_digitsOnly],
+          decoration: const InputDecoration(
+            labelText: '阈值（豆）',
+            helperText: '把不超过这么多豆的孤立同色小块，并入相邻主色',
+          ),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('设置尺寸')),
-      body: Padding(
+      appBar: AppBar(title: const Text('设置')),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _width,
-                    keyboardType: TextInputType.number,
-                    onChanged: _onWidthChanged,
-                    decoration: const InputDecoration(labelText: '宽 (豆)'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _height,
-                    keyboardType: TextInputType.number,
-                    onChanged: _onHeightChanged,
-                    decoration: const InputDecoration(labelText: '高 (豆)'),
-                  ),
-                ),
-              ],
-            ),
+            _sizeStepper(_width, '宽 (豆)', _onWidthChanged),
+            const SizedBox(height: 12),
+            _sizeStepper(_height, '高 (豆)', _onHeightChanged),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -178,6 +282,8 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                   ),
               ],
             ),
+            const SizedBox(height: 24),
+            ..._optionControls(context),
             const SizedBox(height: 24),
             if (_error != null)
               Padding(
