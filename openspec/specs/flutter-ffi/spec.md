@@ -9,13 +9,21 @@
 ## 需求
 ### 需求:bead-ffi 是 generate_pattern 的零逻辑薄桥
 
-`crates/bead-ffi` 必须是 `bead-core` 到 Dart 的薄桥，禁止包含任何算法或业务逻辑。
+`crates/bead-ffi` 必须是 `bead-core` 到 Dart 的薄桥,禁止包含任何算法或业务逻辑。
 它对外只能调用 `bead-core` 的既有公共 API:`load_palette`、`pipeline::generate_pattern`、
 `pipeline::pattern_json`；禁止触达 pipeline 的内部阶段(`image_to_grid` / matcher /
 统计 / 渲染)或在桥层重新编排生成流程(CLAUDE 规则 4)。`bead-core` 禁止因 FFI 引入
-任何 UI / 文件系统 / Flutter / 平台依赖；`BeadPattern` / `ColorStat` 已派生 `Clone`,
-FFI 跨边界镜像必须在 `bead-ffi` 侧完成(FRB `mirror` 或本地包装),禁止为 FFI 便利而
-修改 `bead-core` 的数据模型。
+任何 UI / 文件系统 / Flutter / 平台依赖;禁止为 FFI 便利而修改 `bead-core` 的数据模型。
+FFI 跨边界的结构化类型必须在 `bead-ffi` 侧完成映射:**出现在响应(返回值)里的结构化
+类型必须用 bead-ffi 自有的普通 DTO**(逐字段从 `bead_core` 拷贝),**禁止用 `#[frb(mirror)]`
+镜像类型**——镜像类型在**返回值**里会把调用走进 flutter_rust_bridge 的 SSE 编解码路径,
+该路径在 **iOS 目标**上以恒定 +6 字节的记账断言失败(`codec/sse.rs:129`)而 panic(与图片
+大小/调用参数无关,已由模拟器二分坐实;macOS 对同一字节正常)。镜像(`#[frb(mirror)]`)仍
+**允许用于参数**(如 `GeneratorKind`)——参数侧不触发该 panic。`GenerateOutput.pattern` /
+`GenerateOutput.stats` 因此以 bead-ffi 的 `BeadPattern` / `ColorStat` DTO(同名同字段:
+`width`/`height`/`cells`、`code`/`name`/`count`)跨边界,`generate_inner` 从 `bead_core`
+的对应值逐字段拷贝;该 DTO 的字段形状与「结构化数组而非 JSON 跨边界」契约保持不变,对 Dart
+消费方透明。
 
 #### 场景:桥只调用既有公共入口
 - **当** `bead-ffi` 的桥接函数处理一次生成请求
@@ -24,9 +32,21 @@ FFI 跨边界镜像必须在 `bead-ffi` 侧完成(FRB `mirror` 或本地包装),
 
 #### 场景:core 不被 FFI 污染
 - **当** 为支持 FFI 实现桥接
-- **那么** `bead-core` 必须保持零改动(`BeadPattern` / `ColorStat` 已派生 `Clone`),
-  跨边界镜像在 `bead-ffi` 侧完成；禁止在 core 内出现 Flutter / 平台 / 文件系统 / FFI
-  运行时依赖,也禁止把「为何 Clone」之类的下游消费者语境写进 core
+- **那么** `bead-core` 必须保持零改动;跨边界结构化类型的映射在 `bead-ffi` 侧完成(响应类型
+  用本地 DTO,见下一场景);禁止在 core 内出现 Flutter / 平台 / 文件系统 / FFI 运行时依赖,
+  也禁止把「为何 Clone / 为何 DTO」之类的下游消费者语境写进 core
+
+#### 场景:响应结构类型用本地 DTO,不用镜像
+- **当** `bead-ffi` 定义跨边界返回的结构化类型(`GenerateOutput` 内的 `pattern` / `stats`)
+- **那么** 它们必须是 `bead-ffi` 自有的普通 FRB struct(DTO),由 `generate_inner` 从 `bead_core`
+  值逐字段拷贝;**禁止**对响应中的结构化类型使用 `#[frb(mirror)]`(镜像返回类型在 iOS 触发
+  SSE 记账 panic);镜像仅可用于**参数**类型
+
+#### 场景:iOS 上 generate 返回有效结果而非 panic
+- **当** 在 iOS(含模拟器)上以合法图像字节与调色板调用桥接 `generate`
+- **那么** 调用必须返回结构完整的 `GenerateOutput`(`pattern.width`/`height`/`cells`、`stats`、
+  `preview_png` 等非空且形状正确),**不得**因 flutter_rust_bridge SSE 编解码断言而 panic;
+  该保证必须由一个**在设备上实际执行**的回归测试守住(测试不得被 `@TestOn` 等选择器静默跳过)
 
 ### 需求:桥接边界契约(M8 仅 width/height)
 `bead-ffi` 必须暴露单一生成入口。输入为:图像字节、调色板 JSON 字符串、目标网格尺寸 `width` / `height`,**以及三个可选项** `max_colors: Option<u32>`、`despeckle: Option<u32>`、`generator`(镜像 `GeneratorKind`,取值 `staged` | `gerstner`,默认 `staged`)。桥接函数必须用调色板 JSON 的字节(`palette_json.as_bytes()`,因为 `load_palette` 接受 `&[u8]`)调 `load_palette`,再以 `GenerateOptions { width, height, max_colors, despeckle, generator, ..Default::default() }` 调 `generate_pattern`。**三项均未设置时(`max_colors = None`、`despeckle = None`、`generator = staged`)该构造必须逐字段等价于旧的 `GenerateOptions { width, height, ..Default::default() }`**,从而输出与放宽前的 FFI、及不带对应旗标的 CLI 默认路径**逐字节相同**——既有闸门不回退。该默认路径包括 filter=**`Triangle`**、cell_size=`10`、shape=`Square`、matcher=`MatcherKind::Oklab`(引擎默认)。**调色板 JSON 必须是 UTF-8 且无 BOM**:带 BOM 的 UTF-8 调色板在 CLI 与 FFI 两侧**均触发 `PaletteParse`**(`serde_json::from_slice` 不跳过 BOM);真正使 CLI/FFI **分叉**的是非 UTF-8 字节(Dart 解码为 U+FFFD 后再编码 ≠ 原始文件字节)。两类均**不在**「CLI == FFI 逐字节相等」保证内(项目自带调色板均为无 BOM 的 UTF-8,已核验逐字节往返一致)。放宽后的边界**只**新开放 `max_colors` / `despeckle` / `generator` 三项——它们恰是 **CLI 已暴露(`--max-colors` / `--despeckle` / `--generator`)且移动端 UI 需要** 的集合,故「CLI == FFI」对它们可测;`generator` 的 FFI 镜像枚举→`bead_core::GeneratorKind` 的映射属平凡 marshalling(与 CLI 的 `From<CliGenerator>` 同性质),不违反「零逻辑薄桥」。边界仍**禁止**暴露 `filter` / `cell_size` / `shape` / `matcher` 作为调用方选项:CLI 对 `filter` / `cell_size` / `shape` 无法表达非默认值,暴露它们会使「CLI == FFI」对非默认输入不可测;`matcher` 虽已由 CLI 暴露给 A/B 验证,但本轮 FFI/mobile 仍只承诺默认 Oklab 路径,避免扩张移动边界。非默认 `--matcher lab|rgb` 的 FFI 对账待后续明确 UI/FFI 需求时再加(届时仍走同一 `generate_pattern`)。输出必须把 `GenerateResult` 完整交回 Dart:pattern 的 `width` / `height` / `cells`(`u16` 数组)、`stats`(`{code, name, count}` 列表)、`summary`、`brand`、`preview_png` 字节、`grid_png` 字节;并必须另外提供 `pattern_json` 字符串。`cells` 与 `stats` 必须以结构化数组(而非 JSON 字符串)跨边界。
