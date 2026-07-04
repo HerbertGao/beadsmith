@@ -15,6 +15,8 @@ import 'package:beadsmith/infrastructure/bead_bridge.dart'
 import 'package:beadsmith/infrastructure/pattern_engine.dart';
 import 'package:beadsmith/presentation/generate_page.dart';
 import 'package:beadsmith/presentation/session_providers.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -151,5 +153,47 @@ void main() {
 
     expect(fake.called, isFalse);
     expect(find.text('开了「限制颜色数」请填一个有效数值'), findsOneWidget);
+  });
+
+  // iOS branch: the platform-adaptive controls are a NEW code path
+  // (CupertinoSlidingSegmentedControl with a nullable onValueChanged). Assert
+  // BOTH that iOS renders the Cupertino segment (not Material's SegmentedButton)
+  // AND that a value picked on it reaches the bridge verbatim — existence alone
+  // would miss a mis-wired forward (the "dead control" bug).
+  //
+  // The adaptive switch is asserted only for its Cupertino *look*, not a
+  // CupertinoSwitch widget: Flutter 3.44's Switch.adaptive paints a Material
+  // switch in Cupertino style rather than emitting a CupertinoSwitch, so a
+  // find.byType(CupertinoSwitch) is unsatisfiable in this SDK.
+  testWidgets('iOS: Cupertino segment renders and its pick reaches the bridge',
+      (tester) async {
+    // Reset in a finally (not addTearDown): the test framework's foundation-var
+    // invariant check runs at the end of the body, BEFORE tearDowns fire.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final fake = _FakeBridge();
+      await _pumpGeneratePage(tester, fake);
+
+      // Existence: iOS renders the Cupertino segment, not Material's.
+      expect(find.byType(CupertinoSlidingSegmentedControl<GeneratorKind>),
+          findsOneWidget);
+      expect(find.byType(SegmentedButton<GeneratorKind>), findsNothing);
+
+      // Forwarding: pick 照片 on the Cupertino segment, then generate.
+      final photo = find.text('照片');
+      await tester.ensureVisible(photo);
+      await tester.tap(photo);
+      await tester.pump();
+
+      final generate = find.widgetWithText(FilledButton, '生成');
+      await tester.ensureVisible(generate);
+      await tester.tap(generate);
+      await tester.pumpAndSettle();
+
+      expect(fake.called, isTrue);
+      expect(fake.generator, GeneratorKind.gerstner);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
