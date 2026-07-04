@@ -21,7 +21,9 @@ tokens(激活色/thumb/背景取 `colorScheme`)以保品牌一致。骨架保留
 
 #### 场景:iOS 呈现自适应/Cupertino 控件
 - **当** 在 iOS(`Theme.of(context).platform == TargetPlatform.iOS`)呈现各屏
-- **那么** 开关必须是 `CupertinoSwitch`(经 `.adaptive`)、生成与裁剪读尺寸的 loading 必须是 iOS 菊花(经
+- **那么** 开关必须经 `SwitchListTile.adaptive` 呈现 iOS 自适应外观(`Switch.adaptive` 只保证 iOS 呈现,**不
+  保证**具体 `CupertinoSwitch` widget 类型——故契约锁「自适应呈现 + 取值转发」的行为,不锁 widget 类型)、
+  生成与裁剪读尺寸的 loading 必须是 iOS 菊花(经
   `.adaptive`)、两处分段(生成模式、纵/横)必须是 `CupertinoSlidingSegmentedControl`;页面切换为横滑且支持
   边缘滑动返回
 

@@ -16,5 +16,5 @@
 ## 4. 验证
 
 - [x] 4.1 `flutter analyze` 无新增告警;`flutter test` 通过——既有 `option_forwarding_test`(widget 测试默认 `TargetPlatform.android` → 走 Material 分支)必须仍绿(finder 命中 `SwitchListTile`/`SegmentedButton`)。
-- [x] 4.2 新增 iOS 分支 widget 测试(`debugDefaultTargetPlatformOverride = TargetPlatform.iOS`,`addTearDown` 复位):不止断言渲染出 `CupertinoSwitch` / `CupertinoSlidingSegmentedControl`(存在性),**还必须点选 iOS 的 Cupertino 生成模式分段(如「照片」)、经替身桥(`_FakeBridge` 复用)断言选中的 `generator` 原样抵达 `ffi.generate`**——iOS 分段是新代码路径,只测存在会漏掉转发接错。
+- [x] 4.2 新增 iOS 分支 widget 测试(`debugDefaultTargetPlatformOverride = TargetPlatform.iOS`,在 **`finally`** 里复位——foundation-var 不变量检查先于 tearDown 触发,故不用 `addTearDown`):断言渲染出 `CupertinoSlidingSegmentedControl`(而非 `SegmentedButton`),**并点选 iOS 的 Cupertino 生成模式分段(如「照片」)、经替身桥(`_FakeBridge` 复用)断言选中的 `generator` 原样抵达 `ffi.generate`**——iOS 分段是新代码路径,只测存在会漏掉转发接错。(不断言 `CupertinoSwitch` 类型:`Switch.adaptive` 在此 SDK 渲染 Cupertino 风格的 Material 开关、不发 `CupertinoSwitch` widget。)
 - [x] 4.3 iOS 模拟器目测:开关药丸、两处 loading 菊花、两处分段 iOS 滑块、页面横滑 + 滑动返回;深/浅色 + 品牌配色仍在。Android(切目标或安卓模拟器)目测仍 Material、无回归。确定性/选项透传/比例锁定不受影响。
