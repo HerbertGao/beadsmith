@@ -115,7 +115,7 @@ class _CropPageState extends ConsumerState<CropPage> {
           : _error != null
               ? Center(child: Text(_error!))
               : _srcSize == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator.adaptive())
                   : CropFrame(
                       imageBytes: bytes,
                       imageSize: _srcSize!,

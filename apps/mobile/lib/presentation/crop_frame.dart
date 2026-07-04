@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'crop_geometry.dart';
+import 'platform_segment.dart';
 
 /// The pan/zoom/rotate/flip framing state, expressed exactly in the geometry
 /// model group A consumes: `zoom` is RELATIVE to cover (>=1), pan is normalized
@@ -171,13 +172,11 @@ class _CropFrameState extends State<CropFrame> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('纵向')),
-                      ButtonSegment(value: true, label: Text('横向')),
-                    ],
-                    selected: {landscape},
-                    onSelectionChanged: (s) => setSheet(() => landscape = s.first),
+                  child: platformSegment<bool>(
+                    context: ctx,
+                    value: landscape,
+                    options: const [(false, '纵向'), (true, '横向')],
+                    onChanged: (v) => setSheet(() => landscape = v),
                   ),
                 ),
                 for (final a in _aspects)

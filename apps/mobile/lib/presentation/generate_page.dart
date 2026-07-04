@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../application/providers.dart';
 import '../infrastructure/bead_bridge.dart' show GeneratorKind;
+import 'platform_segment.dart';
 import 'session_providers.dart';
 
 /// Fit a width×height pair to `aspect` (= width/height) with both sides in
@@ -226,18 +227,20 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
     return [
       Text('生成模式', style: labelStyle),
       const SizedBox(height: 8),
-      SegmentedButton<GeneratorKind>(
-        segments: const [
-          ButtonSegment(value: GeneratorKind.staged, label: Text('常规')),
-          ButtonSegment(value: GeneratorKind.gerstner, label: Text('照片')),
+      platformSegment<GeneratorKind>(
+        context: context,
+        value: _generator,
+        options: const [
+          (GeneratorKind.staged, '常规'),
+          (GeneratorKind.gerstner, '照片'),
         ],
-        selected: {_generator},
-        onSelectionChanged: (s) => setState(() => _generator = s.first),
+        onChanged: (v) => setState(() => _generator = v),
       ),
       const SizedBox(height: 16),
-      SwitchListTile(
+      SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         title: const Text('限制颜色数'),
+        activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
         value: _limitColors,
         onChanged: (v) => setState(() => _limitColors = v),
       ),
@@ -249,10 +252,11 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
           decoration: const InputDecoration(labelText: '最大颜色数'),
         ),
       const SizedBox(height: 16),
-      SwitchListTile(
+      SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         title: const Text('去斑'),
         subtitle: const Text('清除孤立的杂色点'),
+        activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
         value: _despeckleOn,
         onChanged: (v) => setState(() => _despeckleOn = v),
       ),
@@ -309,7 +313,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
                     )
                   : const Text('生成'),
             ),
