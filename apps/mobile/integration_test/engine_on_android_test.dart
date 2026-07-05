@@ -17,9 +17,9 @@
 // test at host-level pre-filter (same root cause as engine_on_ios_test.dart's
 // @TestOn('ios') — see generate_ios_regression_test.dart's header). Target the
 // Android device explicitly: `flutter test integration_test/
-// engine_on_android_test.dart -d emulator-5554`. The assertions are the same
-// structural invariants as the iOS test, so running it on iOS is harmless
-// (redundant with engine_on_ios_test.dart), not wrong.
+// engine_on_android_test.dart -d emulator-5554` (from `apps/mobile/`). A
+// runtime `Platform.isAndroid` guard below fails the test LOUDLY if it is ever
+// swept into a non-Android run — fail, not silently skip, is the point.
 import 'dart:io' show Platform;
 
 import 'package:beadsmith/infrastructure/bead_ffi_loader.dart';

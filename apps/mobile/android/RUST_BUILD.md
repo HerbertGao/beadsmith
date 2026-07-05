@@ -63,6 +63,9 @@ versions do not conflict; Gradle's NDK is only there for ABI packaging.
 
 ## Verification (done)
 
+Run the Flutter commands from `apps/mobile/` (the `build-android.sh` command
+above runs from the repo root).
+
 - *Automated* — `flutter test integration_test/engine_on_android_test.dart
   -d emulator-5554`: the `libbead_ffi.so` ships in the APK and loads via
   `ExternalLibrary.open('libbead_ffi.so')` (7.2), `generate` returns a
