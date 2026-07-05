@@ -438,11 +438,14 @@ M9 added mobile packaging with **no bridge-logic change** (the crate gains a
 verified**: `scripts/build-ios.sh` produces `libbead_ffi.a` for device
 (`aarch64-apple-ios`) and simulator (`aarch64-apple-ios-sim`,
 `x86_64-apple-ios`), linked into the Flutter Runner and loaded via FRB's
-`ExternalLibrary.process()`. **Android scaffold is in place but unverified**:
-jniLibs directory layout + a Gradle/NDK build hook + `ExternalLibrary.open`
-loader branch exist, but actual cross-compilation and on-device validation are
-deferred to a user environment with the Android SDK/NDK installed
-(see `apps/mobile/android/RUST_BUILD_TODO.md`).
+`ExternalLibrary.process()`. **Android is verified post-M9**:
+`scripts/build-android.sh` produces `libbead_ffi.so` per ABI
+(`aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`)
+into `jniLibs/<abi>/`, packaged into the APK and loaded via FRB's
+`ExternalLibrary.open('libbead_ffi.so')` — proven on an Android emulator
+(Pixel_10, Android 17 / API 37) by `integration_test/engine_on_android_test.dart`
+plus a one-time manual four-screen run
+(see `apps/mobile/android/RUST_BUILD.md`).
 
 ---
 

@@ -171,7 +171,12 @@ Connect / Google Play are **deferred to a separate later change** (release
 engineering, not part of this milestone's gate).
 
 > **Status:** the offline app is achieved this milestone — iOS is cross-compiled
-> and the four-screen flow runs on-device, fully offline. Store signing,
+> and the four-screen flow runs on-device, fully offline. Android was shipped as
+> an unverified scaffold at M9 and **verified post-M9** on an Android emulator
+> (Pixel_10, Android 17 / API 37): the `libbead_ffi.so` per-ABI build +
+> jniLibs packaging + `ExternalLibrary.open` load + the same four-screen flow
+> all run, automated by `integration_test/engine_on_android_test.dart` plus a
+> one-time manual run. See `apps/mobile/android/RUST_BUILD.md`. Store signing,
 > metadata, and upload to App Store Connect / Google Play are **deferred to a
 > separate later change** (release engineering, not MVP function).
 

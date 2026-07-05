@@ -44,7 +44,8 @@ flutter {
     source = "../.."
 }
 
-// Android Rust build (M9 scaffold, deferred — NOT verified): the bead-ffi cdylib
-// (.so) per-ABI build + jniLibs copy + Gradle `preBuild` wiring is specified in
-// android/RUST_BUILD_TODO.md. Implement it there once Android SDK + NDK and the
-// three rust android targets are set up.
+// Android Rust build (verified): the bead-ffi cdylib (.so) per-ABI build +
+// jniLibs copy is done by crates/bead-ffi/scripts/build-android.sh (mirrors
+// build-ios.sh). See apps/mobile/android/RUST_BUILD.md. A Gradle `preBuild` auto-hook is
+// intentionally NOT wired — run the script manually before flutter run/test,
+// same as the iOS workflow.
