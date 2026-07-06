@@ -268,6 +268,13 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
   （`{brand, colors:[{code,name,rgb}]}`）加文件走 `load_palette` 校验即可；App 侧要
   让用户能选色卡（当前硬编码 artkal_s，牵动 FFI/UI 的「选调色板」能力）。**确定性：**
   新增色卡不改算法、不动 golden。
+  - **进度（2026-07-06，PR #22 已合并，引擎侧）：** ①②③⑤ 已落地——`palettes/`
+    新增 13 个色卡 MARD（221 实色，过滤特效豆）、Artkal A/C/M/R、Hama Midi/Maxi/Mini、
+    Perler/Caps/Mini、Nabbi、Yant，均源自 `maxcleme/beadcolors`（MIT，已归因入
+    `NOTICE`）、全过 `load_palette` 校验。**④ COCO/漫漫/盼盼/咪小窝 受阻**：唯一数字源为
+    AGPL-3.0（Zippland），「宽松」拷贝经 SHA-256 证实是逐字节 laundering；草稿暂存于
+    `palettes/_unlicensed/`（不进 `NOTICE`/可发现集），上架前须用官方实体色卡实测值替换。
+    **剩余：** App 侧「选色卡」UI/FFI、`palette list` 实现仍待做。
 
 > 上架（第 4 条）依赖收藏 + 定名/图标的完成度——那是「像成品」的最低要求。
 
