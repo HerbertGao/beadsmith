@@ -274,7 +274,11 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
     `NOTICE`）、全过 `load_palette` 校验。**④ COCO/漫漫/盼盼/咪小窝 受阻**：唯一数字源为
     AGPL-3.0（Zippland），「宽松」拷贝经 SHA-256 证实是逐字节 laundering；草稿暂存于
     `palettes/_unlicensed/`（不进 `NOTICE`/可发现集），上架前须用官方实体色卡实测值替换。
-    **剩余：** App 侧「选色卡」UI/FFI、`palette list` 实现仍待做。
+  - **进度（2026-07-06，PR #23 已合并，App 侧）：** App「选色卡」能力已落地——设置页新增
+    「色卡」行 → Material 底部弹窗从 14 个内置色卡选择、默认 MARD；`shared_preferences`
+    持久化（色卡/生成模式/限色/去斑/宽）；结果钉住生成时色卡（改色卡不污染已有结果）。
+    引擎/CLI/FFI 零改动。变更 `app-palette-selection` 已归档。**剩余：** CLI `palette list`
+    实现（引擎侧独立事项）仍待做。
 
 > 上架（第 4 条）依赖收藏 + 定名/图标的完成度——那是「像成品」的最低要求。
 
