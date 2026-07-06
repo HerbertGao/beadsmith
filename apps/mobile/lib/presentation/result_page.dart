@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/providers.dart';
 import '../infrastructure/album_service.dart' show AlbumAccessDenied;
 import '../infrastructure/bead_bridge.dart' show ColorStat, GenerateOutput;
-import '../infrastructure/palette_codec.dart' show PaletteColor;
+import '../infrastructure/palette_codec.dart' show PaletteColor, parsePalette;
 import 'bead_grid_view.dart';
 import 'session_providers.dart';
 import 'theme.dart';
@@ -26,21 +26,21 @@ class ResultPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final output = ref.watch(generateResultProvider);
-    final paletteAsync = ref.watch(paletteProvider);
-    if (output == null) {
+    final result = ref.watch(generateResultProvider);
+    if (result == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('结果')),
         body: const Center(child: Text('没有结果')),
       );
     }
+    // Parse the palette PINNED at generation time (design D6), synchronously —
+    // the JSON is already in hand, so there's no loading/error state. Reading the
+    // live `paletteJsonProvider` here would recolor the result if the user
+    // switched palettes after generating.
+    final palette = parsePalette(result.paletteJson);
     return Scaffold(
-      appBar: _ResultAppBar(output: output),
-      body: paletteAsync.when(
-        data: (palette) => _ResultBody(output: output, palette: palette),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('调色板加载失败: $e')),
-      ),
+      appBar: _ResultAppBar(output: result.output),
+      body: _ResultBody(output: result.output, palette: palette),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'application/generate_settings.dart' show sharedPreferencesProvider;
 import 'infrastructure/bead_ffi_loader.dart';
 import 'presentation/app_router.dart';
 import 'presentation/theme.dart';
@@ -16,7 +18,14 @@ Future<void> main() async {
     ));
     return;
   }
-  runApp(const ProviderScope(child: BeadsmithApp()));
+  // Pre-load persisted settings so the settings Notifier reads them synchronously
+  // on the first frame — no not-ready window, no "default then overwrite" race
+  // (design D4). Injected via override so the Notifier reads the ready instance.
+  final prefs = await SharedPreferences.getInstance();
+  runApp(ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    child: const BeadsmithApp(),
+  ));
 }
 
 class BeadsmithApp extends StatelessWidget {

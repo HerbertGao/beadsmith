@@ -1,0 +1,395 @@
+{
+  "brand": "Hama Mini",
+  "colors": [
+    {
+      "code": "H01",
+      "name": "White",
+      "rgb": "#E5ECF1"
+    },
+    {
+      "code": "H02",
+      "name": "Cream",
+      "rgb": "#E4E4C5"
+    },
+    {
+      "code": "H03",
+      "name": "Yellow",
+      "rgb": "#E9C704"
+    },
+    {
+      "code": "H04",
+      "name": "Orange",
+      "rgb": "#D14803"
+    },
+    {
+      "code": "H05",
+      "name": "Red",
+      "rgb": "#B4060E"
+    },
+    {
+      "code": "H06",
+      "name": "Pink",
+      "rgb": "#EA8AA5"
+    },
+    {
+      "code": "H07",
+      "name": "Purple",
+      "rgb": "#712297"
+    },
+    {
+      "code": "H08",
+      "name": "Blue",
+      "rgb": "#0239A3"
+    },
+    {
+      "code": "H09",
+      "name": "Light Blue",
+      "rgb": "#025BC3"
+    },
+    {
+      "code": "H10",
+      "name": "Green",
+      "rgb": "#027643"
+    },
+    {
+      "code": "H11",
+      "name": "Light Green",
+      "rgb": "#19CDA7"
+    },
+    {
+      "code": "H12",
+      "name": "Brown",
+      "rgb": "#3E271A"
+    },
+    {
+      "code": "H13",
+      "name": "Transparent Red",
+      "rgb": "#C02435"
+    },
+    {
+      "code": "H14",
+      "name": "Transparent Yellow",
+      "rgb": "#E4AA32"
+    },
+    {
+      "code": "H15",
+      "name": "Transparent Blue",
+      "rgb": "#487ED5"
+    },
+    {
+      "code": "H16",
+      "name": "Transparent Green",
+      "rgb": "#37B876"
+    },
+    {
+      "code": "H17",
+      "name": "Grey",
+      "rgb": "#838F98"
+    },
+    {
+      "code": "H18",
+      "name": "Black",
+      "rgb": "#141315"
+    },
+    {
+      "code": "H19",
+      "name": "Clear",
+      "rgb": "#D8D2CE"
+    },
+    {
+      "code": "H20",
+      "name": "Reddish Brown",
+      "rgb": "#8D2A0F"
+    },
+    {
+      "code": "H21",
+      "name": "Light Brown",
+      "rgb": "#BE6C21"
+    },
+    {
+      "code": "H22",
+      "name": "Dark Red",
+      "rgb": "#91020A"
+    },
+    {
+      "code": "H24",
+      "name": "Translucent Purple",
+      "rgb": "#683E9A"
+    },
+    {
+      "code": "H26",
+      "name": "Matt Rose",
+      "rgb": "#E8A498"
+    },
+    {
+      "code": "H27",
+      "name": "Beige",
+      "rgb": "#DCB18E"
+    },
+    {
+      "code": "H28",
+      "name": "Dark Green",
+      "rgb": "#1E2C1C"
+    },
+    {
+      "code": "H29",
+      "name": "Claret",
+      "rgb": "#BF0142"
+    },
+    {
+      "code": "H30",
+      "name": "Burgundy",
+      "rgb": "#4E0C1B"
+    },
+    {
+      "code": "H31",
+      "name": "Turquoise",
+      "rgb": "#489AB9"
+    },
+    {
+      "code": "H32",
+      "name": "Neon Fuchsia",
+      "rgb": "#FF208D"
+    },
+    {
+      "code": "H33",
+      "name": "Cerise",
+      "rgb": "#FF3956"
+    },
+    {
+      "code": "H34",
+      "name": "Neon Yellow",
+      "rgb": "#E5EF13"
+    },
+    {
+      "code": "H35",
+      "name": "Neon Red",
+      "rgb": "#FF2833"
+    },
+    {
+      "code": "H36",
+      "name": "Neon Blue",
+      "rgb": "#2353B0"
+    },
+    {
+      "code": "H37",
+      "name": "Neon Green",
+      "rgb": "#06B73C"
+    },
+    {
+      "code": "H38",
+      "name": "Neon Orange",
+      "rgb": "#FD8600"
+    },
+    {
+      "code": "H42",
+      "name": "Fluorescent Green",
+      "rgb": "#0CBD51"
+    },
+    {
+      "code": "H43",
+      "name": "Pastel Yellow",
+      "rgb": "#E7E45A"
+    },
+    {
+      "code": "H44",
+      "name": "Pastel Red",
+      "rgb": "#F96160"
+    },
+    {
+      "code": "H45",
+      "name": "Pastel Purple",
+      "rgb": "#8E69CD"
+    },
+    {
+      "code": "H46",
+      "name": "Pastel Blue",
+      "rgb": "#51AEE4"
+    },
+    {
+      "code": "H47",
+      "name": "Pastel Green",
+      "rgb": "#80DF96"
+    },
+    {
+      "code": "H48",
+      "name": "Pastel Pink",
+      "rgb": "#D67AD1"
+    },
+    {
+      "code": "H49",
+      "name": "Azure",
+      "rgb": "#0FACD1"
+    },
+    {
+      "code": "H60",
+      "name": "Teddybear Brown",
+      "rgb": "#F0981E"
+    },
+    {
+      "code": "H70",
+      "name": "Light Grey",
+      "rgb": "#A5B3C0"
+    },
+    {
+      "code": "H71",
+      "name": "Dark Grey",
+      "rgb": "#445059"
+    },
+    {
+      "code": "H75",
+      "name": "Tan",
+      "rgb": "#B78C6D"
+    },
+    {
+      "code": "H76",
+      "name": "Nougat",
+      "rgb": "#8A5937"
+    },
+    {
+      "code": "H77",
+      "name": "Cloudy White",
+      "rgb": "#CED1C8"
+    },
+    {
+      "code": "H78",
+      "name": "Light Peach",
+      "rgb": "#F7C1AA"
+    },
+    {
+      "code": "H79",
+      "name": "Apricot",
+      "rgb": "#F87633"
+    },
+    {
+      "code": "H82",
+      "name": "Plum",
+      "rgb": "#91175A"
+    },
+    {
+      "code": "H83",
+      "name": "Petrol Blue",
+      "rgb": "#037A9F"
+    },
+    {
+      "code": "H84",
+      "name": "Olive Green",
+      "rgb": "#687836"
+    },
+    {
+      "code": "H95",
+      "name": "Pastel Rose",
+      "rgb": "#DD9BA3"
+    },
+    {
+      "code": "H96",
+      "name": "Pastel Lilac",
+      "rgb": "#B491AD"
+    },
+    {
+      "code": "H97",
+      "name": "Pastel Ice Blue",
+      "rgb": "#8AAFC2"
+    },
+    {
+      "code": "H98",
+      "name": "Pastel Mint",
+      "rgb": "#94CCA4"
+    },
+    {
+      "code": "H101",
+      "name": "Eucalyptus",
+      "rgb": "#A9C39B"
+    },
+    {
+      "code": "H102",
+      "name": "Forest Green",
+      "rgb": "#356B2D"
+    },
+    {
+      "code": "H103",
+      "name": "Light Yellow",
+      "rgb": "#FFE660"
+    },
+    {
+      "code": "H104",
+      "name": "Lime",
+      "rgb": "#BCD122"
+    },
+    {
+      "code": "H105",
+      "name": "Light Apricot",
+      "rgb": "#FFAC78"
+    },
+    {
+      "code": "H106",
+      "name": "Light Lavender",
+      "rgb": "#CCC5ED"
+    },
+    {
+      "code": "H107",
+      "name": "Lavender",
+      "rgb": "#6A87C1"
+    },
+    {
+      "code": "H108",
+      "name": "Aubergine",
+      "rgb": "#2A2536"
+    },
+    {
+      "code": "H109",
+      "name": "Cloudy Grey",
+      "rgb": "#8A847F"
+    },
+    {
+      "code": "H110",
+      "name": "Matcha",
+      "rgb": "#838956"
+    },
+    {
+      "code": "H111",
+      "name": "Dark Blush",
+      "rgb": "#835854"
+    },
+    {
+      "code": "H112",
+      "name": "Blush",
+      "rgb": "#AD8A82"
+    },
+    {
+      "code": "H113",
+      "name": "Aqua",
+      "rgb": "#5F887B"
+    },
+    {
+      "code": "H114",
+      "name": "Cherry Red",
+      "rgb": "#9A2C31"
+    },
+    {
+      "code": "H115",
+      "name": "Bright Green",
+      "rgb": "#6E975F"
+    },
+    {
+      "code": "H116",
+      "name": "Midnight Blue",
+      "rgb": "#222838"
+    },
+    {
+      "code": "H117",
+      "name": "Taupe Grey",
+      "rgb": "#777169"
+    },
+    {
+      "code": "H118",
+      "name": "Maroon Red",
+      "rgb": "#612932"
+    },
+    {
+      "code": "H119",
+      "name": "Sky Blue",
+      "rgb": "#4167B4"
+    }
+  ]
+}

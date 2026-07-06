@@ -1,0 +1,210 @@
+{
+  "brand": "Perler Mini",
+  "colors": [
+    {
+      "code": "80-14110",
+      "name": "Toasted Marshmallow",
+      "rgb": "#DEDACE"
+    },
+    {
+      "code": "80-15179",
+      "name": "Evergreen",
+      "rgb": "#305545"
+    },
+    {
+      "code": "80-15181",
+      "name": "Light Grey",
+      "rgb": "#B3BAB8"
+    },
+    {
+      "code": "80-19001",
+      "name": "White",
+      "rgb": "#EAEFEE"
+    },
+    {
+      "code": "80-19002",
+      "name": "Creme",
+      "rgb": "#E1E2BB"
+    },
+    {
+      "code": "80-19003",
+      "name": "Yellow",
+      "rgb": "#E7CE3E"
+    },
+    {
+      "code": "80-19004",
+      "name": "Orange",
+      "rgb": "#EB7B31"
+    },
+    {
+      "code": "80-19005",
+      "name": "Red",
+      "rgb": "#B0353C"
+    },
+    {
+      "code": "80-19006",
+      "name": "Bubblegum",
+      "rgb": "#D8729A"
+    },
+    {
+      "code": "80-19007",
+      "name": "Purple",
+      "rgb": "#684B86"
+    },
+    {
+      "code": "80-19008",
+      "name": "Dark Blue",
+      "rgb": "#0E5092"
+    },
+    {
+      "code": "80-19009",
+      "name": "Light Blue",
+      "rgb": "#278CC9"
+    },
+    {
+      "code": "80-19010",
+      "name": "Dark Green",
+      "rgb": "#007B4E"
+    },
+    {
+      "code": "80-19011",
+      "name": "Light Green",
+      "rgb": "#18C7B1"
+    },
+    {
+      "code": "80-19012",
+      "name": "Brown",
+      "rgb": "#674C44"
+    },
+    {
+      "code": "80-19017",
+      "name": "Grey",
+      "rgb": "#909497"
+    },
+    {
+      "code": "80-19018",
+      "name": "Black",
+      "rgb": "#323234"
+    },
+    {
+      "code": "80-19021",
+      "name": "Light Brown",
+      "rgb": "#936848"
+    },
+    {
+      "code": "80-19033",
+      "name": "Peach",
+      "rgb": "#E9BFB9"
+    },
+    {
+      "code": "80-19035",
+      "name": "Tan",
+      "rgb": "#C5AC90"
+    },
+    {
+      "code": "80-19052",
+      "name": "Pastel Blue",
+      "rgb": "#4A9CCF"
+    },
+    {
+      "code": "80-19054",
+      "name": "Pastel Lavender",
+      "rgb": "#937FBF"
+    },
+    {
+      "code": "80-19056",
+      "name": "Pastel Yellow",
+      "rgb": "#E9E290"
+    },
+    {
+      "code": "80-19057",
+      "name": "Cheddar",
+      "rgb": "#FBB146"
+    },
+    {
+      "code": "80-19058",
+      "name": "Toothpaste",
+      "rgb": "#96D1D4"
+    },
+    {
+      "code": "80-19059",
+      "name": "Hot Coral",
+      "rgb": "#DD595B"
+    },
+    {
+      "code": "80-19060",
+      "name": "Plum",
+      "rgb": "#A75D9D"
+    },
+    {
+      "code": "80-19061",
+      "name": "Kiwi Lime",
+      "rgb": "#69B845"
+    },
+    {
+      "code": "80-19062",
+      "name": "Turquoise",
+      "rgb": "#0098C5"
+    },
+    {
+      "code": "80-19063",
+      "name": "Blush",
+      "rgb": "#F99297"
+    },
+    {
+      "code": "80-19079",
+      "name": "Light Pink",
+      "rgb": "#E1BCCE"
+    },
+    {
+      "code": "80-19080",
+      "name": "Green",
+      "rgb": "#4DAB64"
+    },
+    {
+      "code": "80-19083",
+      "name": "Pink",
+      "rgb": "#D45496"
+    },
+    {
+      "code": "80-19088",
+      "name": "Raspberry",
+      "rgb": "#983864"
+    },
+    {
+      "code": "80-19090",
+      "name": "Butterscotch",
+      "rgb": "#DA9964"
+    },
+    {
+      "code": "80-19091",
+      "name": "Parrot Green",
+      "rgb": "#009188"
+    },
+    {
+      "code": "80-19092",
+      "name": "Dark Grey",
+      "rgb": "#585C61"
+    },
+    {
+      "code": "80-19093",
+      "name": "Blueberry Creme",
+      "rgb": "#85A8E3"
+    },
+    {
+      "code": "80-19096",
+      "name": "Cranapple",
+      "rgb": "#843947"
+    },
+    {
+      "code": "80-19097",
+      "name": "Prickly Pear",
+      "rgb": "#BBC938"
+    },
+    {
+      "code": "80-19098",
+      "name": "Sand",
+      "rgb": "#E5BE9E"
+    }
+  ]
+}

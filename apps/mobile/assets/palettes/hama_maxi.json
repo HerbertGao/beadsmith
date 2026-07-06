@@ -1,0 +1,130 @@
+{
+  "brand": "Hama Maxi",
+  "colors": [
+    {
+      "code": "H01",
+      "name": "White",
+      "rgb": "#E5ECF1"
+    },
+    {
+      "code": "H03",
+      "name": "Yellow",
+      "rgb": "#E9C704"
+    },
+    {
+      "code": "H05",
+      "name": "Red",
+      "rgb": "#B4060E"
+    },
+    {
+      "code": "H07",
+      "name": "Purple",
+      "rgb": "#712297"
+    },
+    {
+      "code": "H09",
+      "name": "Light Blue",
+      "rgb": "#025BC3"
+    },
+    {
+      "code": "H10",
+      "name": "Green",
+      "rgb": "#027643"
+    },
+    {
+      "code": "H17",
+      "name": "Grey",
+      "rgb": "#838F98"
+    },
+    {
+      "code": "H18",
+      "name": "Black",
+      "rgb": "#141315"
+    },
+    {
+      "code": "H20",
+      "name": "Reddish Brown",
+      "rgb": "#8D2A0F"
+    },
+    {
+      "code": "H26",
+      "name": "Matt Rose",
+      "rgb": "#E8A498"
+    },
+    {
+      "code": "H32",
+      "name": "Neon Fuchsia",
+      "rgb": "#FF208D"
+    },
+    {
+      "code": "H34",
+      "name": "Neon Yellow",
+      "rgb": "#E5EF13"
+    },
+    {
+      "code": "H35",
+      "name": "Neon Red",
+      "rgb": "#FF2833"
+    },
+    {
+      "code": "H36",
+      "name": "Neon Blue",
+      "rgb": "#2353B0"
+    },
+    {
+      "code": "H37",
+      "name": "Neon Green",
+      "rgb": "#06B73C"
+    },
+    {
+      "code": "H38",
+      "name": "Neon Orange",
+      "rgb": "#FD8600"
+    },
+    {
+      "code": "H43",
+      "name": "Pastel Yellow",
+      "rgb": "#E7E45A"
+    },
+    {
+      "code": "H44",
+      "name": "Pastel Red",
+      "rgb": "#F96160"
+    },
+    {
+      "code": "H45",
+      "name": "Pastel Purple",
+      "rgb": "#8E69CD"
+    },
+    {
+      "code": "H46",
+      "name": "Pastel Blue",
+      "rgb": "#51AEE4"
+    },
+    {
+      "code": "H47",
+      "name": "Pastel Green",
+      "rgb": "#80DF96"
+    },
+    {
+      "code": "H48",
+      "name": "Pastel Pink",
+      "rgb": "#D67AD1"
+    },
+    {
+      "code": "H60",
+      "name": "Teddybear Brown",
+      "rgb": "#F0981E"
+    },
+    {
+      "code": "H70",
+      "name": "Light Grey",
+      "rgb": "#A5B3C0"
+    },
+    {
+      "code": "H79",
+      "name": "Apricot",
+      "rgb": "#F87633"
+    }
+  ]
+}

@@ -37,15 +37,26 @@ class CropAspectNotifier extends Notifier<double> {
 final cropAspectProvider =
     NotifierProvider<CropAspectNotifier, double>(CropAspectNotifier.new);
 
-/// The last successful `GenerateOutput`, consumed by ResultPage.
-class GenerateResultNotifier extends Notifier<GenerateOutput?> {
-  @override
-  GenerateOutput? build() => null;
+/// A generation result pinned to the palette JSON actually passed to `generate`
+/// (design D6). ResultPage parses THIS palette — never the live selection — so
+/// changing the palette after generating can't recolor an existing result.
+/// A Dart-side wrapper; the FFI `GenerateOutput` type is untouched.
+class GenerateResult {
+  const GenerateResult({required this.output, required this.paletteJson});
 
-  void set(GenerateOutput? value) => state = value;
+  final GenerateOutput output;
+  final String paletteJson;
+}
+
+/// The last successful result (output + pinned palette), consumed by ResultPage.
+class GenerateResultNotifier extends Notifier<GenerateResult?> {
+  @override
+  GenerateResult? build() => null;
+
+  void set(GenerateResult? value) => state = value;
 }
 
 final generateResultProvider =
-    NotifierProvider<GenerateResultNotifier, GenerateOutput?>(
+    NotifierProvider<GenerateResultNotifier, GenerateResult?>(
   GenerateResultNotifier.new,
 );

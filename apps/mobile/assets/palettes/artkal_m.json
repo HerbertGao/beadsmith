@@ -1,0 +1,1105 @@
+{
+  "brand": "Artkal M",
+  "colors": [
+    {
+      "code": "MA1",
+      "name": "MA1",
+      "rgb": "#FFF6D4"
+    },
+    {
+      "code": "MA2",
+      "name": "MA2",
+      "rgb": "#F6F9E5"
+    },
+    {
+      "code": "MA3",
+      "name": "MA3",
+      "rgb": "#FFFBAA"
+    },
+    {
+      "code": "MA4",
+      "name": "MA4",
+      "rgb": "#FFDF58"
+    },
+    {
+      "code": "MA5",
+      "name": "MA5",
+      "rgb": "#FECF4D"
+    },
+    {
+      "code": "MA6",
+      "name": "MA6",
+      "rgb": "#FFA80C"
+    },
+    {
+      "code": "MA7",
+      "name": "MA7",
+      "rgb": "#FF8837"
+    },
+    {
+      "code": "MA8",
+      "name": "MA8",
+      "rgb": "#EAC431"
+    },
+    {
+      "code": "MA9",
+      "name": "MA9",
+      "rgb": "#F1AA8F"
+    },
+    {
+      "code": "MA10",
+      "name": "MA10",
+      "rgb": "#FF8F42"
+    },
+    {
+      "code": "MA11",
+      "name": "MA11",
+      "rgb": "#FFE1A1"
+    },
+    {
+      "code": "MA12",
+      "name": "MA12",
+      "rgb": "#F4B39C"
+    },
+    {
+      "code": "MA13",
+      "name": "MA13",
+      "rgb": "#FFB100"
+    },
+    {
+      "code": "MA14",
+      "name": "MA14",
+      "rgb": "#FF6510"
+    },
+    {
+      "code": "MA15",
+      "name": "MA15",
+      "rgb": "#DAF05C"
+    },
+    {
+      "code": "MA16",
+      "name": "MA16",
+      "rgb": "#F9FBBE"
+    },
+    {
+      "code": "MA17",
+      "name": "MA17",
+      "rgb": "#FFD976"
+    },
+    {
+      "code": "MA18",
+      "name": "MA18",
+      "rgb": "#FFCA9A"
+    },
+    {
+      "code": "MA19",
+      "name": "MA19",
+      "rgb": "#EC7A92"
+    },
+    {
+      "code": "MA20",
+      "name": "MA20",
+      "rgb": "#E5BE55"
+    },
+    {
+      "code": "MA21",
+      "name": "MA21",
+      "rgb": "#FFE596"
+    },
+    {
+      "code": "MA22",
+      "name": "MA22",
+      "rgb": "#F7E898"
+    },
+    {
+      "code": "MA23",
+      "name": "MA23",
+      "rgb": "#F0CBB1"
+    },
+    {
+      "code": "MA24",
+      "name": "MA24",
+      "rgb": "#F5FCD1"
+    },
+    {
+      "code": "MA25",
+      "name": "MA25",
+      "rgb": "#F6D487"
+    },
+    {
+      "code": "MA26",
+      "name": "MA26",
+      "rgb": "#FFCB4B"
+    },
+    {
+      "code": "MB1",
+      "name": "MB1",
+      "rgb": "#D2E318"
+    },
+    {
+      "code": "MB2",
+      "name": "MB2",
+      "rgb": "#79CD41"
+    },
+    {
+      "code": "MB3",
+      "name": "MB3",
+      "rgb": "#82D7A1"
+    },
+    {
+      "code": "MB4",
+      "name": "MB4",
+      "rgb": "#65DF4F"
+    },
+    {
+      "code": "MB5",
+      "name": "MB5",
+      "rgb": "#5FC873"
+    },
+    {
+      "code": "MB6",
+      "name": "MB6",
+      "rgb": "#49D1AE"
+    },
+    {
+      "code": "MB7",
+      "name": "MB7",
+      "rgb": "#009696"
+    },
+    {
+      "code": "MB8",
+      "name": "MB8",
+      "rgb": "#08774F"
+    },
+    {
+      "code": "MB9",
+      "name": "MB9",
+      "rgb": "#183823"
+    },
+    {
+      "code": "MB10",
+      "name": "MB10",
+      "rgb": "#83CFC3"
+    },
+    {
+      "code": "MB11",
+      "name": "MB11",
+      "rgb": "#5A6A27"
+    },
+    {
+      "code": "MB12",
+      "name": "MB12",
+      "rgb": "#045F45"
+    },
+    {
+      "code": "MB13",
+      "name": "MB13",
+      "rgb": "#E2FFB3"
+    },
+    {
+      "code": "MB14",
+      "name": "MB14",
+      "rgb": "#9DD12E"
+    },
+    {
+      "code": "MB15",
+      "name": "MB15",
+      "rgb": "#254B3C"
+    },
+    {
+      "code": "MB16",
+      "name": "MB16",
+      "rgb": "#D0FCAD"
+    },
+    {
+      "code": "MB17",
+      "name": "MB17",
+      "rgb": "#8CA12A"
+    },
+    {
+      "code": "MB18",
+      "name": "MB18",
+      "rgb": "#D2D958"
+    },
+    {
+      "code": "MB19",
+      "name": "MB19",
+      "rgb": "#49BCA9"
+    },
+    {
+      "code": "MB20",
+      "name": "MB20",
+      "rgb": "#E8FDEC"
+    },
+    {
+      "code": "MB21",
+      "name": "MB21",
+      "rgb": "#188B81"
+    },
+    {
+      "code": "MB22",
+      "name": "MB22",
+      "rgb": "#0C5C5B"
+    },
+    {
+      "code": "MB23",
+      "name": "MB23",
+      "rgb": "#3D461B"
+    },
+    {
+      "code": "MB24",
+      "name": "MB24",
+      "rgb": "#EAFCB6"
+    },
+    {
+      "code": "MB25",
+      "name": "MB25",
+      "rgb": "#538771"
+    },
+    {
+      "code": "MB26",
+      "name": "MB26",
+      "rgb": "#8A7A40"
+    },
+    {
+      "code": "MB27",
+      "name": "MB27",
+      "rgb": "#D2DEB6"
+    },
+    {
+      "code": "MB28",
+      "name": "MB28",
+      "rgb": "#9FF4C2"
+    },
+    {
+      "code": "MB29",
+      "name": "MB29",
+      "rgb": "#BBD747"
+    },
+    {
+      "code": "MB30",
+      "name": "MB30",
+      "rgb": "#F5FFE6"
+    },
+    {
+      "code": "MB31",
+      "name": "MB31",
+      "rgb": "#BFE1C2"
+    },
+    {
+      "code": "MB32",
+      "name": "MB32",
+      "rgb": "#9FBA5C"
+    },
+    {
+      "code": "MC1",
+      "name": "MC1",
+      "rgb": "#D5E3DE"
+    },
+    {
+      "code": "MC2",
+      "name": "MC2",
+      "rgb": "#BBF1F4"
+    },
+    {
+      "code": "MC3",
+      "name": "MC3",
+      "rgb": "#73C0DF"
+    },
+    {
+      "code": "MC4",
+      "name": "MC4",
+      "rgb": "#33B3E1"
+    },
+    {
+      "code": "MC5",
+      "name": "MC5",
+      "rgb": "#00A3CA"
+    },
+    {
+      "code": "MC6",
+      "name": "MC6",
+      "rgb": "#58A0D9"
+    },
+    {
+      "code": "MC7",
+      "name": "MC7",
+      "rgb": "#0588CC"
+    },
+    {
+      "code": "MC8",
+      "name": "MC8",
+      "rgb": "#005F9E"
+    },
+    {
+      "code": "MC9",
+      "name": "MC9",
+      "rgb": "#086FB9"
+    },
+    {
+      "code": "MC10",
+      "name": "MC10",
+      "rgb": "#52B4E0"
+    },
+    {
+      "code": "MC11",
+      "name": "MC11",
+      "rgb": "#00A9B9"
+    },
+    {
+      "code": "MC12",
+      "name": "MC12",
+      "rgb": "#1C375A"
+    },
+    {
+      "code": "MC13",
+      "name": "MC13",
+      "rgb": "#CEE0F0"
+    },
+    {
+      "code": "MC14",
+      "name": "MC14",
+      "rgb": "#EBF5F4"
+    },
+    {
+      "code": "MC15",
+      "name": "MC15",
+      "rgb": "#00AAAD"
+    },
+    {
+      "code": "MC16",
+      "name": "MC16",
+      "rgb": "#004C7D"
+    },
+    {
+      "code": "MC17",
+      "name": "MC17",
+      "rgb": "#5BD4F6"
+    },
+    {
+      "code": "MC18",
+      "name": "MC18",
+      "rgb": "#36515C"
+    },
+    {
+      "code": "MC19",
+      "name": "MC19",
+      "rgb": "#0F909D"
+    },
+    {
+      "code": "MC20",
+      "name": "MC20",
+      "rgb": "#0084B7"
+    },
+    {
+      "code": "MC21",
+      "name": "MC21",
+      "rgb": "#DDECFA"
+    },
+    {
+      "code": "MC22",
+      "name": "MC22",
+      "rgb": "#84BAC2"
+    },
+    {
+      "code": "MC23",
+      "name": "MC23",
+      "rgb": "#CBDBDB"
+    },
+    {
+      "code": "MC24",
+      "name": "MC24",
+      "rgb": "#88BDE2"
+    },
+    {
+      "code": "MC25",
+      "name": "MC25",
+      "rgb": "#B3ECE0"
+    },
+    {
+      "code": "MC26",
+      "name": "MC26",
+      "rgb": "#3E9EBF"
+    },
+    {
+      "code": "MC27",
+      "name": "MC27",
+      "rgb": "#E9F0F3"
+    },
+    {
+      "code": "MC28",
+      "name": "MC28",
+      "rgb": "#C2CDE3"
+    },
+    {
+      "code": "MC29",
+      "name": "MC29",
+      "rgb": "#586B8F"
+    },
+    {
+      "code": "MD1",
+      "name": "MD1",
+      "rgb": "#7292E2"
+    },
+    {
+      "code": "MD2",
+      "name": "MD2",
+      "rgb": "#6E8CCC"
+    },
+    {
+      "code": "MD3",
+      "name": "MD3",
+      "rgb": "#13419A"
+    },
+    {
+      "code": "MD4",
+      "name": "MD4",
+      "rgb": "#1E3175"
+    },
+    {
+      "code": "MD5",
+      "name": "MD5",
+      "rgb": "#B850B2"
+    },
+    {
+      "code": "MD6",
+      "name": "MD6",
+      "rgb": "#AD92E9"
+    },
+    {
+      "code": "MD7",
+      "name": "MD7",
+      "rgb": "#5F2D91"
+    },
+    {
+      "code": "MD8",
+      "name": "MD8",
+      "rgb": "#D7CDF1"
+    },
+    {
+      "code": "MD9",
+      "name": "MD9",
+      "rgb": "#BDB2E6"
+    },
+    {
+      "code": "MD10",
+      "name": "MD10",
+      "rgb": "#251B58"
+    },
+    {
+      "code": "MD11",
+      "name": "MD11",
+      "rgb": "#A2BBE7"
+    },
+    {
+      "code": "MD12",
+      "name": "MD12",
+      "rgb": "#CF8BBE"
+    },
+    {
+      "code": "MD13",
+      "name": "MD13",
+      "rgb": "#B80096"
+    },
+    {
+      "code": "MD14",
+      "name": "MD14",
+      "rgb": "#A137A7"
+    },
+    {
+      "code": "MD15",
+      "name": "MD15",
+      "rgb": "#4A388A"
+    },
+    {
+      "code": "MD16",
+      "name": "MD16",
+      "rgb": "#DCE8F6"
+    },
+    {
+      "code": "MD17",
+      "name": "MD17",
+      "rgb": "#AECEF0"
+    },
+    {
+      "code": "MD18",
+      "name": "MD18",
+      "rgb": "#B38EDB"
+    },
+    {
+      "code": "MD19",
+      "name": "MD19",
+      "rgb": "#E8D2EA"
+    },
+    {
+      "code": "MD20",
+      "name": "MD20",
+      "rgb": "#B460C3"
+    },
+    {
+      "code": "MD21",
+      "name": "MD21",
+      "rgb": "#842A94"
+    },
+    {
+      "code": "MD22",
+      "name": "MD22",
+      "rgb": "#4B5E9E"
+    },
+    {
+      "code": "MD23",
+      "name": "MD23",
+      "rgb": "#D6D2E2"
+    },
+    {
+      "code": "MD24",
+      "name": "MD24",
+      "rgb": "#7776D1"
+    },
+    {
+      "code": "MD25",
+      "name": "MD25",
+      "rgb": "#3837A8"
+    },
+    {
+      "code": "MD26",
+      "name": "MD26",
+      "rgb": "#DDC8DD"
+    },
+    {
+      "code": "ME1",
+      "name": "ME1",
+      "rgb": "#FDD6C9"
+    },
+    {
+      "code": "ME2",
+      "name": "ME2",
+      "rgb": "#FFD8F4"
+    },
+    {
+      "code": "ME3",
+      "name": "ME3",
+      "rgb": "#FFA0C3"
+    },
+    {
+      "code": "ME4",
+      "name": "ME4",
+      "rgb": "#F67AAB"
+    },
+    {
+      "code": "ME5",
+      "name": "ME5",
+      "rgb": "#DA5B95"
+    },
+    {
+      "code": "ME6",
+      "name": "ME6",
+      "rgb": "#FF4B78"
+    },
+    {
+      "code": "ME7",
+      "name": "ME7",
+      "rgb": "#9E156B"
+    },
+    {
+      "code": "ME8",
+      "name": "ME8",
+      "rgb": "#FFE1E6"
+    },
+    {
+      "code": "ME9",
+      "name": "ME9",
+      "rgb": "#F378CA"
+    },
+    {
+      "code": "ME10",
+      "name": "ME10",
+      "rgb": "#BE316D"
+    },
+    {
+      "code": "ME11",
+      "name": "ME11",
+      "rgb": "#FFE8DA"
+    },
+    {
+      "code": "ME12",
+      "name": "ME12",
+      "rgb": "#FFA5C6"
+    },
+    {
+      "code": "ME13",
+      "name": "ME13",
+      "rgb": "#B53883"
+    },
+    {
+      "code": "ME14",
+      "name": "ME14",
+      "rgb": "#FFDDC7"
+    },
+    {
+      "code": "ME15",
+      "name": "ME15",
+      "rgb": "#E5C6D0"
+    },
+    {
+      "code": "ME16",
+      "name": "ME16",
+      "rgb": "#F9F2EB"
+    },
+    {
+      "code": "ME17",
+      "name": "ME17",
+      "rgb": "#E7DCE6"
+    },
+    {
+      "code": "ME18",
+      "name": "ME18",
+      "rgb": "#FFD3E6"
+    },
+    {
+      "code": "ME19",
+      "name": "ME19",
+      "rgb": "#FFD5EC"
+    },
+    {
+      "code": "ME20",
+      "name": "ME20",
+      "rgb": "#F3DCE8"
+    },
+    {
+      "code": "ME21",
+      "name": "ME21",
+      "rgb": "#BD9CA3"
+    },
+    {
+      "code": "ME22",
+      "name": "ME22",
+      "rgb": "#C578A5"
+    },
+    {
+      "code": "ME23",
+      "name": "ME23",
+      "rgb": "#A37A9B"
+    },
+    {
+      "code": "ME24",
+      "name": "ME24",
+      "rgb": "#F4E8FF"
+    },
+    {
+      "code": "MF1",
+      "name": "MF1",
+      "rgb": "#FF7F67"
+    },
+    {
+      "code": "MF2",
+      "name": "MF2",
+      "rgb": "#FF5D46"
+    },
+    {
+      "code": "MF3",
+      "name": "MF3",
+      "rgb": "#E3564A"
+    },
+    {
+      "code": "MF4",
+      "name": "MF4",
+      "rgb": "#C7270D"
+    },
+    {
+      "code": "MF5",
+      "name": "MF5",
+      "rgb": "#BE0A27"
+    },
+    {
+      "code": "MF6",
+      "name": "MF6",
+      "rgb": "#83411E"
+    },
+    {
+      "code": "MF7",
+      "name": "MF7",
+      "rgb": "#730037"
+    },
+    {
+      "code": "MF8",
+      "name": "MF8",
+      "rgb": "#AB0022"
+    },
+    {
+      "code": "MF9",
+      "name": "MF9",
+      "rgb": "#DE7995"
+    },
+    {
+      "code": "MF10",
+      "name": "MF10",
+      "rgb": "#AB613C"
+    },
+    {
+      "code": "MF11",
+      "name": "MF11",
+      "rgb": "#5C2929"
+    },
+    {
+      "code": "MF12",
+      "name": "MF12",
+      "rgb": "#F34461"
+    },
+    {
+      "code": "MF13",
+      "name": "MF13",
+      "rgb": "#C64239"
+    },
+    {
+      "code": "MF14",
+      "name": "MF14",
+      "rgb": "#FFA5BB"
+    },
+    {
+      "code": "MF15",
+      "name": "MF15",
+      "rgb": "#BC0018"
+    },
+    {
+      "code": "MF16",
+      "name": "MF16",
+      "rgb": "#FFD7CB"
+    },
+    {
+      "code": "MF17",
+      "name": "MF17",
+      "rgb": "#F19D8A"
+    },
+    {
+      "code": "MF18",
+      "name": "MF18",
+      "rgb": "#DC7B45"
+    },
+    {
+      "code": "MF19",
+      "name": "MF19",
+      "rgb": "#C74651"
+    },
+    {
+      "code": "MF20",
+      "name": "MF20",
+      "rgb": "#D8A89E"
+    },
+    {
+      "code": "MF21",
+      "name": "MF21",
+      "rgb": "#EB9DB9"
+    },
+    {
+      "code": "MF22",
+      "name": "MF22",
+      "rgb": "#FFD4D4"
+    },
+    {
+      "code": "MF23",
+      "name": "MF23",
+      "rgb": "#EA8474"
+    },
+    {
+      "code": "MF24",
+      "name": "MF24",
+      "rgb": "#F7C1C5"
+    },
+    {
+      "code": "MF25",
+      "name": "MF25",
+      "rgb": "#FC5768"
+    },
+    {
+      "code": "MG1",
+      "name": "MG1",
+      "rgb": "#FFE7C8"
+    },
+    {
+      "code": "MG2",
+      "name": "MG2",
+      "rgb": "#FFD6C3"
+    },
+    {
+      "code": "MG3",
+      "name": "MG3",
+      "rgb": "#EEB694"
+    },
+    {
+      "code": "MG4",
+      "name": "MG4",
+      "rgb": "#D9A58C"
+    },
+    {
+      "code": "MG5",
+      "name": "MG5",
+      "rgb": "#F49630"
+    },
+    {
+      "code": "MG6",
+      "name": "MG6",
+      "rgb": "#F19937"
+    },
+    {
+      "code": "MG7",
+      "name": "MG7",
+      "rgb": "#AC745B"
+    },
+    {
+      "code": "MG8",
+      "name": "MG8",
+      "rgb": "#694A42"
+    },
+    {
+      "code": "MG9",
+      "name": "MG9",
+      "rgb": "#F7CC9D"
+    },
+    {
+      "code": "MG10",
+      "name": "MG10",
+      "rgb": "#C7832F"
+    },
+    {
+      "code": "MG11",
+      "name": "MG11",
+      "rgb": "#D3C391"
+    },
+    {
+      "code": "MG12",
+      "name": "MG12",
+      "rgb": "#E6B986"
+    },
+    {
+      "code": "MG13",
+      "name": "MG13",
+      "rgb": "#C67B4F"
+    },
+    {
+      "code": "MG14",
+      "name": "MG14",
+      "rgb": "#8D6242"
+    },
+    {
+      "code": "MG15",
+      "name": "MG15",
+      "rgb": "#F6F7E2"
+    },
+    {
+      "code": "MG16",
+      "name": "MG16",
+      "rgb": "#F2E7D7"
+    },
+    {
+      "code": "MG17",
+      "name": "MG17",
+      "rgb": "#786562"
+    },
+    {
+      "code": "MG18",
+      "name": "MG18",
+      "rgb": "#FEF5EB"
+    },
+    {
+      "code": "MG19",
+      "name": "MG19",
+      "rgb": "#F0AB47"
+    },
+    {
+      "code": "MG20",
+      "name": "MG20",
+      "rgb": "#AE6949"
+    },
+    {
+      "code": "MG21",
+      "name": "MG21",
+      "rgb": "#BF8C6E"
+    },
+    {
+      "code": "MH2",
+      "name": "MH2",
+      "rgb": "#FFFFFF"
+    },
+    {
+      "code": "MH3",
+      "name": "MH3",
+      "rgb": "#9B9B9B"
+    },
+    {
+      "code": "MH4",
+      "name": "MH4",
+      "rgb": "#6D6D6D"
+    },
+    {
+      "code": "MH5",
+      "name": "MH5",
+      "rgb": "#4D4D4D"
+    },
+    {
+      "code": "MH6",
+      "name": "MH6",
+      "rgb": "#3A3A3A"
+    },
+    {
+      "code": "MH7",
+      "name": "MH7",
+      "rgb": "#000000"
+    },
+    {
+      "code": "MH8",
+      "name": "MH8",
+      "rgb": "#FFF0F1"
+    },
+    {
+      "code": "MH9",
+      "name": "MH9",
+      "rgb": "#E3E6DF"
+    },
+    {
+      "code": "MH10",
+      "name": "MH10",
+      "rgb": "#E2E0E7"
+    },
+    {
+      "code": "MH11",
+      "name": "MH11",
+      "rgb": "#BCB8B5"
+    },
+    {
+      "code": "MH12",
+      "name": "MH12",
+      "rgb": "#F7F3E1"
+    },
+    {
+      "code": "MH13",
+      "name": "MH13",
+      "rgb": "#EADDC8"
+    },
+    {
+      "code": "MH14",
+      "name": "MH14",
+      "rgb": "#B8C8C5"
+    },
+    {
+      "code": "MH15",
+      "name": "MH15",
+      "rgb": "#99ABAC"
+    },
+    {
+      "code": "MH16",
+      "name": "MH16",
+      "rgb": "#444236"
+    },
+    {
+      "code": "MH17",
+      "name": "MH17",
+      "rgb": "#FAFBF5"
+    },
+    {
+      "code": "MH18",
+      "name": "MH18",
+      "rgb": "#FEFEEE"
+    },
+    {
+      "code": "MH19",
+      "name": "MH19",
+      "rgb": "#FBF2E4"
+    },
+    {
+      "code": "MH20",
+      "name": "MH20",
+      "rgb": "#9EAEAD"
+    },
+    {
+      "code": "MH21",
+      "name": "MH21",
+      "rgb": "#FDFFF2"
+    },
+    {
+      "code": "MH22",
+      "name": "MH22",
+      "rgb": "#EDEDE7"
+    },
+    {
+      "code": "MH23",
+      "name": "MH23",
+      "rgb": "#B4B8A7"
+    },
+    {
+      "code": "MM1",
+      "name": "MM1",
+      "rgb": "#AEBBA8"
+    },
+    {
+      "code": "MM2",
+      "name": "MM2",
+      "rgb": "#729376"
+    },
+    {
+      "code": "MM3",
+      "name": "MM3",
+      "rgb": "#6A8890"
+    },
+    {
+      "code": "MM4",
+      "name": "MM4",
+      "rgb": "#BEB39D"
+    },
+    {
+      "code": "MM5",
+      "name": "MM5",
+      "rgb": "#B8B78C"
+    },
+    {
+      "code": "MM6",
+      "name": "MM6",
+      "rgb": "#B2AC93"
+    },
+    {
+      "code": "MM7",
+      "name": "MM7",
+      "rgb": "#BC9F94"
+    },
+    {
+      "code": "MM8",
+      "name": "MM8",
+      "rgb": "#968381"
+    },
+    {
+      "code": "MM9",
+      "name": "MM9",
+      "rgb": "#B39D88"
+    },
+    {
+      "code": "MM10",
+      "name": "MM10",
+      "rgb": "#B796A3"
+    },
+    {
+      "code": "MM11",
+      "name": "MM11",
+      "rgb": "#B096B9"
+    },
+    {
+      "code": "MM12",
+      "name": "MM12",
+      "rgb": "#685951"
+    },
+    {
+      "code": "MM13",
+      "name": "MM13",
+      "rgb": "#C79582"
+    },
+    {
+      "code": "MM14",
+      "name": "MM14",
+      "rgb": "#CA694F"
+    },
+    {
+      "code": "MM15",
+      "name": "MM15",
+      "rgb": "#929FA9"
+    }
+  ]
+}
