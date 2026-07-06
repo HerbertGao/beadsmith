@@ -57,20 +57,27 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
     return AppBar(
       title: Row(
         children: [
-          GestureDetector(
+          // 48×48 hit target (a11y minimum) around a 30×30 visual thumbnail.
+          InkWell(
             onTap: () => _showPreview(context, output.previewPng),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.memory(
-                output.previewPng,
-                width: 30,
-                height: 30,
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.memory(
+                    output.previewPng,
+                    width: 30,
+                    height: 30,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
           const Text('结果'),
         ],
       ),

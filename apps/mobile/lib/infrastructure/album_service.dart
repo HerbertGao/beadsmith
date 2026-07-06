@@ -17,9 +17,11 @@ class AlbumService {
       final granted = await Gal.requestAccess(toAlbum: true);
       if (!granted) throw AlbumAccessDenied();
     }
+    // gal doesn't infer the extension from `name`, so include `.png`
+    // explicitly or gallery/file managers may not recognize the type.
     await Gal.putImageBytes(
       pngBytes,
-      name: 'beadsmith-${DateTime.now().millisecondsSinceEpoch}',
+      name: 'beadsmith-${DateTime.now().millisecondsSinceEpoch}.png',
     );
   }
 }

@@ -52,4 +52,4 @@ M9 的 `ResultPage` 只给用户三样东西：位图预览（`previewPng`）、
 - **不改引擎**——`bead-core` / `bead-cli` / `bead-ffi` 零改动；golden 测试不受影响。
 - **不改其它三屏**（Home / Crop / Generate）——本次只动 `ResultPage`。
 - **不做格子视图的坐标/行列标注叠加**（如行列号刻度）——留给后续打磨，本次只解决"点格查豆"核心。
-- **不做 grid 截图另存**——本次保存到相册只存 `previewPng`（引擎渲染图）；grid 本身是交互视图，不另存。
+- **不做 grid 截图另存**——本次保存到相册只存引擎已渲染的 `gridPng`（带网格线/行列号的格子图）；App 端的交互 grid 视图本身不另做截图另存。
