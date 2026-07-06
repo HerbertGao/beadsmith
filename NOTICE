@@ -41,3 +41,41 @@ were otherwise modified.
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+palettes/mard.json
+
+The color data in palettes/mard.json (MARD classic solid set, series A-H and M)
+is derived from the "beadcolors" project by maxcleme, which is distributed under
+the MIT License. The RGB values were converted from the upstream CSV
+raw/mard.csv into the "#RRGGBB" hex form used by this project and filtered to the
+221 solid-series colors; no color values were otherwise modified.
+
+  Upstream source : https://github.com/maxcleme/beadcolors
+  File            : raw/mard.csv
+  Commit          : d54a845b0f2eac288a071d4cc883431a58c902f8
+
+  The MIT License text and copyright notice reproduced above (for
+  palettes/artkal_s.json) apply equally to this file; both are derived from the
+  same MIT-licensed upstream project.
+
+-------------------------------------------------------------------------------
+
+palettes/{artkal_a,artkal_c,artkal_m,artkal_r,hama,hama_maxi,hama_mini,nabbi,
+          perler,perler_caps,perler_mini,yant}.json
+
+These bead-brand palettes are likewise derived from the "beadcolors" project by
+maxcleme (MIT License). Each was converted from the correspondingly-named
+upstream CSV under raw/ into the "#RRGGBB" hex form used by this project; the
+color code, name, and RGB values were otherwise not modified.
+
+  Upstream source : https://github.com/maxcleme/beadcolors
+  Files           : raw/artkal_a.csv, raw/artkal_c.csv, raw/artkal_m.csv,
+                    raw/artkal_r.csv, raw/hama.csv, raw/hama_maxi.csv,
+                    raw/hama_mini.csv, raw/nabbi.csv, raw/perler.csv,
+                    raw/perler_caps.csv, raw/perler_mini.csv, raw/yant.csv
+  Retrieved at    : commit 29229889daab404fb30531d4bb785fd73f7f58e3 (master)
+
+  The MIT License text and copyright notice reproduced above apply equally to
+  these files; all are derived from the same MIT-licensed upstream project.
