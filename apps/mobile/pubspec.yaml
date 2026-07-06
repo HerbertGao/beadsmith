@@ -56,6 +56,11 @@ dependencies:
   # result survives a background kill. Exact-pinned like the rest.
   gal: 2.3.2
 
+  # Cross-launch KV persistence for the settings page (palette / generator /
+  # limit / despeckle / width). App-side only — MUST NOT leak into any crate.
+  # Exact-pinned like the rest.
+  shared_preferences: 2.5.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -83,9 +88,26 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Byte-exact copy of palettes/artkal_s.json (no-BOM UTF-8); read at runtime
-    # via rootBundle and passed as paletteJson. Drift from the source fails `cmp`.
+    # 14 MIT-clean palettes: byte-exact copies of the top-level palettes/*.json
+    # (no-BOM UTF-8), read at runtime via rootBundle and passed as paletteJson.
+    # Listed ONE BY ONE on purpose — a `assets/palettes/` directory glob would
+    # bundle ANY file dropped in (e.g. an AGPL _unlicensed/ palette), which a
+    # "14 present & byte-equal" positive check can't catch. palette_assets_test
+    # asserts the on-disk set is EXACTLY these 14. Drift from source fails `cmp`.
+    - assets/palettes/mard.json
     - assets/palettes/artkal_s.json
+    - assets/palettes/artkal_a.json
+    - assets/palettes/artkal_c.json
+    - assets/palettes/artkal_m.json
+    - assets/palettes/artkal_r.json
+    - assets/palettes/hama.json
+    - assets/palettes/hama_maxi.json
+    - assets/palettes/hama_mini.json
+    - assets/palettes/perler.json
+    - assets/palettes/perler_caps.json
+    - assets/palettes/perler_mini.json
+    - assets/palettes/nabbi.json
+    - assets/palettes/yant.json
     # Fixture for the on-device integration test (byte-exact copy of
     # samples/gradient.png). Bundled because integration_test loads via rootBundle.
     - assets/test/gradient.png

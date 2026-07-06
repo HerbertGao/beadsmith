@@ -9,6 +9,8 @@
 //   * all-unset arrives as null / null / staged (byte-identical to the old default)
 import 'dart:typed_data';
 
+import 'package:beadsmith/application/generate_settings.dart'
+    show sharedPreferencesProvider;
 import 'package:beadsmith/application/providers.dart';
 import 'package:beadsmith/infrastructure/bead_bridge.dart'
     show BeadPattern, GenerateOutput, GeneratorKind;
@@ -21,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Records the last args and returns a dummy output (no native lib needed).
 class _FakeBridge {
@@ -58,7 +61,12 @@ Future<ProviderContainer> _pumpGeneratePage(
   WidgetTester tester,
   _FakeBridge fake,
 ) async {
+  // Prefs-backed settings Notifier needs a preloaded instance, or it throws
+  // MissingPluginException the moment GeneratePage reads it.
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(overrides: [
+    sharedPreferencesProvider.overrideWithValue(prefs),
     patternEngineProvider.overrideWithValue(PatternEngine(gen: fake.gen)),
     paletteJsonProvider.overrideWith((ref) async => '{}'),
   ]);

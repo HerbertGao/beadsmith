@@ -1,0 +1,135 @@
+{
+  "brand": "Perler Caps",
+  "colors": [
+    {
+      "code": "80-16086",
+      "name": "Black",
+      "rgb": "#323234"
+    },
+    {
+      "code": "80-16087",
+      "name": "White",
+      "rgb": "#EAEFEE"
+    },
+    {
+      "code": "80-16088",
+      "name": "Cotton Candy",
+      "rgb": "#F479B0"
+    },
+    {
+      "code": "80-16089",
+      "name": "Red",
+      "rgb": "#B0353C"
+    },
+    {
+      "code": "80-16090",
+      "name": "Magenta",
+      "rgb": "#E04284"
+    },
+    {
+      "code": "80-16091",
+      "name": "Orange",
+      "rgb": "#EB7B31"
+    },
+    {
+      "code": "80-16092",
+      "name": "Blush",
+      "rgb": "#F99297"
+    },
+    {
+      "code": "80-16093",
+      "name": "Cheddar",
+      "rgb": "#FBB146"
+    },
+    {
+      "code": "80-16094",
+      "name": "Prickly Pear",
+      "rgb": "#BBC938"
+    },
+    {
+      "code": "80-16095",
+      "name": "Yellow",
+      "rgb": "#E7CE3E"
+    },
+    {
+      "code": "80-16096",
+      "name": "Kiwi Lime",
+      "rgb": "#69B845"
+    },
+    {
+      "code": "80-16097",
+      "name": "Shamrock",
+      "rgb": "#008F53"
+    },
+    {
+      "code": "80-16098",
+      "name": "Lagoon",
+      "rgb": "#00A4AC"
+    },
+    {
+      "code": "80-16099",
+      "name": "Cobalt",
+      "rgb": "#0065B1"
+    },
+    {
+      "code": "80-16100",
+      "name": "Toothpaste",
+      "rgb": "#96D1D4"
+    },
+    {
+      "code": "80-16101",
+      "name": "Blueberry Creme",
+      "rgb": "#85A8E3"
+    },
+    {
+      "code": "80-16102",
+      "name": "Purple",
+      "rgb": "#684B86"
+    },
+    {
+      "code": "80-16103",
+      "name": "Plum",
+      "rgb": "#A75D9D"
+    },
+    {
+      "code": "80-16104",
+      "name": "Rust",
+      "rgb": "#995043"
+    },
+    {
+      "code": "80-16105",
+      "name": "Brown",
+      "rgb": "#674C44"
+    },
+    {
+      "code": "80-16106",
+      "name": "Light Brown",
+      "rgb": "#936848"
+    },
+    {
+      "code": "80-16107",
+      "name": "Tan",
+      "rgb": "#C5AC90"
+    },
+    {
+      "code": "80-16108",
+      "name": "Sand",
+      "rgb": "#E5BE9E"
+    },
+    {
+      "code": "80-16109",
+      "name": "Light Gray",
+      "rgb": "#B3BAB8"
+    },
+    {
+      "code": "80-16110",
+      "name": "Gray",
+      "rgb": "#909497"
+    },
+    {
+      "code": "80-16111",
+      "name": "Dark Gray",
+      "rgb": "#585C61"
+    }
+  ]
+}

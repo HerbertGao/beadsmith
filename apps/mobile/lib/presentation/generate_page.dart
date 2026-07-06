@@ -3,8 +3,10 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../application/generate_settings.dart';
 import '../application/providers.dart';
 import '../infrastructure/bead_bridge.dart' show GeneratorKind;
+import '../infrastructure/palette_registry.dart';
 import 'platform_segment.dart';
 import 'session_providers.dart';
 
@@ -36,19 +38,19 @@ class GeneratePage extends ConsumerStatefulWidget {
 }
 
 class _GeneratePageState extends ConsumerState<GeneratePage> {
-  final _width = TextEditingController(text: '100');
-  final _height = TextEditingController(text: '100');
+  final _width = TextEditingController();
+  final _height = TextEditingController();
   bool _busy = false;
   String? _error;
 
-  // Engine options as local state (like _width/_height) — settings and generate
-  // live in the same widget, so no session provider (design D3). Defaults are
-  // field-identical to the old hardcoded path: null / null / staged.
-  GeneratorKind _generator = GeneratorKind.staged;
-  bool _limitColors = false; // off ⇒ maxColors null (no limit)
-  final _maxColors = TextEditingController(text: '24');
-  bool _despeckleOn = false; // off ⇒ despeckle null
-  final _despeckle = TextEditingController(text: '2');
+  // Engine options + width now live in the cross-launch persisted settings model
+  // (design D4): the segment/toggles read `generateSettingsProvider` in build and
+  // write via its setters; these controllers hold the numeric field values and
+  // are seeded from persisted settings in initState. The despeckle/maxColors text
+  // is still read from the controller at generate time so the "toggled-on but
+  // empty ⇒ reject" guard can see an empty field (persisted value is never null).
+  final _maxColors = TextEditingController();
+  final _despeckle = TextEditingController();
 
   // Largest u32 — number inputs are constrained to non-negative and ≤ this so
   // FRB's putUint32 can encode them; business validity (≤N beads, etc.) is the
@@ -79,9 +81,17 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   void initState() {
     super.initState();
     _aspect = ref.read(cropAspectProvider);
-    // Seed height from the 100-bead default width so the initial pair obeys the
-    // lock even for a non-square crop.
-    _height.text = '${_clampSide((100 / _aspect).round())}';
+    final s = ref.read(generateSettingsProvider);
+    _maxColors.text = '${s.maxColors}';
+    _despeckle.text = '${s.despeckle}';
+    // Seed width from the persisted value, then re-derive height for THIS crop's
+    // aspect via the lock (design D5). If the persisted width overflows under a
+    // narrower aspect, lockedGridPair scales the whole pair down — so the seeded
+    // width may not equal the persisted value. This entry re-derive/rebase must
+    // NOT write back (no setWidth): it's not a user edit of the width preference.
+    final (wi, hi) = lockedGridPair(s.width, _aspect, valueIsWidth: true);
+    _width.text = '$wi';
+    _height.text = '$hi';
   }
 
   @override
@@ -104,6 +114,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   void _applyPreset(int w, int h) {
     _width.text = '$w';
     _height.text = '$h';
+    // A preset tap is a deliberate width choice → persist it (design D5). Height
+    // stays derived/transient. (Presets bake in ≤1000 widths, so no rebase.)
+    ref.read(generateSettingsProvider.notifier).setWidth(w);
   }
 
   // Tap −/+ to step a side by 1 (clamped 1..1000); re-derives the paired side
@@ -152,6 +165,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
     final (wi, hi) = lockedGridPair(w, _aspect, valueIsWidth: true);
     _height.text = '$hi';
     if (wi != w) _width.text = '$wi'; // infeasible at this aspect+cap → rebased
+    // User explicitly edited the width field → persist the LANDED legal width
+    // (post aspect-lock / overflow rebase), per design D5's write-back rule.
+    ref.read(generateSettingsProvider.notifier).setWidth(wi);
   }
 
   void _onHeightChanged(String v) {
@@ -180,13 +196,14 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
       setState(() => _error = '宽和高需在 1–1000 之间');
       return;
     }
+    final settings = ref.read(generateSettingsProvider);
     // A toggled-on option with an empty/invalid field would silently send null
     // (= off) with no feedback — reject it. `0` is valid (reaches the engine).
-    if (_limitColors && _readU32OrNull(_maxColors.text) == null) {
+    if (settings.limitColors && _readU32OrNull(_maxColors.text) == null) {
       setState(() => _error = '开了「限制颜色数」请填一个有效数值');
       return;
     }
-    if (_despeckleOn && _readU32OrNull(_despeckle.text) == null) {
+    if (settings.despeckleOn && _readU32OrNull(_despeckle.text) == null) {
       setState(() => _error = '开了「去斑」请填一个有效阈值');
       return;
     }
@@ -201,12 +218,18 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
             paletteJson: paletteJson,
             width: width,
             height: height,
-            maxColors: _limitColors ? _readU32OrNull(_maxColors.text) : null,
-            despeckle: _despeckleOn ? _readU32OrNull(_despeckle.text) : null,
-            generator: _generator,
+            maxColors:
+                settings.limitColors ? _readU32OrNull(_maxColors.text) : null,
+            despeckle:
+                settings.despeckleOn ? _readU32OrNull(_despeckle.text) : null,
+            generator: settings.generator,
           );
       if (!mounted) return;
-      ref.read(generateResultProvider.notifier).set(output);
+      // Pin the exact palette JSON we passed to generate (design D6) — do NOT
+      // re-read the provider, or a later palette switch would drift the result.
+      ref
+          .read(generateResultProvider.notifier)
+          .set(GenerateResult(output: output, paletteJson: paletteJson));
       context.push('/result');
     } catch (e) {
       // Flattened bridge exception message — show it, never crash (spec).
@@ -216,40 +239,48 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
     }
   }
 
-  // Engine-option controls (task 3.1). Styled off theme roles only (4.3) — no
-  // hardcoded colors.
-  List<Widget> _optionControls(BuildContext context) {
+  // Engine-option controls. Read from the persisted settings model and write via
+  // its setters (design D4); styled off theme roles only — no hardcoded colors.
+  List<Widget> _optionControls(BuildContext context, GenerateSettings settings) {
     final scheme = Theme.of(context).colorScheme;
     final labelStyle = Theme.of(context)
         .textTheme
         .titleSmall
         ?.copyWith(color: scheme.onSurface);
+    final notifier = ref.read(generateSettingsProvider.notifier);
     return [
       Text('生成模式', style: labelStyle),
       const SizedBox(height: 8),
       platformSegment<GeneratorKind>(
         context: context,
-        value: _generator,
+        value: settings.generator,
         options: const [
           (GeneratorKind.staged, '常规'),
           (GeneratorKind.gerstner, '照片'),
         ],
-        onChanged: (v) => setState(() => _generator = v),
+        onChanged: notifier.setGenerator,
       ),
       const SizedBox(height: 16),
       SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
         title: const Text('限制颜色数'),
         activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
-        value: _limitColors,
-        onChanged: (v) => setState(() => _limitColors = v),
+        value: settings.limitColors,
+        onChanged: notifier.setLimitColors,
       ),
-      if (_limitColors)
+      if (settings.limitColors)
         TextField(
           controller: _maxColors,
           keyboardType: TextInputType.number,
           inputFormatters: [_digitsOnly],
           decoration: const InputDecoration(labelText: '最大颜色数'),
+          // Persist a valid value; an empty field is transient (persisted value
+          // is non-null) and left alone so the "toggled-on + empty ⇒ reject"
+          // guard still works at generate time.
+          onChanged: (v) {
+            final n = _readU32OrNull(v);
+            if (n != null) notifier.setMaxColors(n);
+          },
         ),
       const SizedBox(height: 16),
       SwitchListTile.adaptive(
@@ -257,10 +288,10 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
         title: const Text('去斑'),
         subtitle: const Text('清除孤立的杂色点'),
         activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
-        value: _despeckleOn,
-        onChanged: (v) => setState(() => _despeckleOn = v),
+        value: settings.despeckleOn,
+        onChanged: notifier.setDespeckleOn,
       ),
-      if (_despeckleOn)
+      if (settings.despeckleOn)
         TextField(
           controller: _despeckle,
           keyboardType: TextInputType.number,
@@ -269,12 +300,68 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
             labelText: '阈值（豆）',
             helperText: '把不超过这么多豆的孤立同色小块，并入相邻主色',
           ),
+          onChanged: (v) {
+            final n = _readU32OrNull(v);
+            if (n != null) notifier.setDespeckle(n);
+          },
         ),
     ];
   }
 
+  /// Palette row (task 4.2): the current brand from the registry (synchronous),
+  /// tap opens a Material bottom sheet listing every built-in palette.
+  Widget _paletteRow(BuildContext context, GenerateSettings settings) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('色卡'),
+      subtitle: Text(paletteEntryOrDefault(settings.paletteId).brand),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: _showPaletteSheet,
+    );
+  }
+
+  // Plain Material bottom sheet (design D2): Flutter has no adaptive bottom-sheet
+  // constructor, and crop/result sheets already use this — two-end consistent.
+  Future<void> _showPaletteSheet() {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetCtx) => SafeArea(
+        child: Consumer(
+          builder: (ctx, ref, _) {
+            final selectedId =
+                ref.watch(generateSettingsProvider.select((s) => s.paletteId));
+            final counts = ref.watch(paletteColorCountsProvider);
+            return ListView(
+              shrinkWrap: true,
+              children: [
+                for (final e in paletteRegistry)
+                  ListTile(
+                    title: Text(e.brand),
+                    // "N 色" lazily parsed; parse failure / not-yet-loaded → "—".
+                    subtitle: Text('${counts.asData?.value[e.id] ?? '—'} 色'),
+                    trailing: e.id == selectedId
+                        ? Icon(Icons.check,
+                            color: Theme.of(ctx).colorScheme.primary)
+                        : null,
+                    onTap: () {
+                      ref
+                          .read(generateSettingsProvider.notifier)
+                          .setPaletteId(e.id);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(generateSettingsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
       body: SingleChildScrollView(
@@ -297,7 +384,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
               ],
             ),
             const SizedBox(height: 24),
-            ..._optionControls(context),
+            _paletteRow(context, settings),
+            const SizedBox(height: 8),
+            ..._optionControls(context, settings),
             const SizedBox(height: 24),
             if (_error != null)
               Padding(
