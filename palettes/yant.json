@@ -1,0 +1,600 @@
+{
+  "brand": "Yant",
+  "colors": [
+    {
+      "code": "Y002",
+      "name": "white",
+      "rgb": "#FFFFFF"
+    },
+    {
+      "code": "Y003",
+      "name": "shell",
+      "rgb": "#E0D4D8"
+    },
+    {
+      "code": "Y004",
+      "name": "ash",
+      "rgb": "#DDDBCE"
+    },
+    {
+      "code": "Y005",
+      "name": "dove",
+      "rgb": "#CEC8CB"
+    },
+    {
+      "code": "Y006",
+      "name": "fog",
+      "rgb": "#D6D4D7"
+    },
+    {
+      "code": "Y007",
+      "name": "cameo",
+      "rgb": "#B5B4B9"
+    },
+    {
+      "code": "Y008",
+      "name": "gray",
+      "rgb": "#8C8A8D"
+    },
+    {
+      "code": "Y009",
+      "name": "smoke",
+      "rgb": "#716E73"
+    },
+    {
+      "code": "Y010",
+      "name": "iron",
+      "rgb": "#4C4C4C"
+    },
+    {
+      "code": "Y011",
+      "name": "black",
+      "rgb": "#000000"
+    },
+    {
+      "code": "Y012",
+      "name": "skin",
+      "rgb": "#EFD8C6"
+    },
+    {
+      "code": "Y013",
+      "name": "shrimp",
+      "rgb": "#EFC096"
+    },
+    {
+      "code": "Y014",
+      "name": "muscle",
+      "rgb": "#E0B998"
+    },
+    {
+      "code": "Y015",
+      "name": "cedar",
+      "rgb": "#BD9C67"
+    },
+    {
+      "code": "Y016",
+      "name": "linen",
+      "rgb": "#D2C196"
+    },
+    {
+      "code": "Y017",
+      "name": "corduroy",
+      "rgb": "#C5A27C"
+    },
+    {
+      "code": "Y018",
+      "name": "bamboo",
+      "rgb": "#DAB476"
+    },
+    {
+      "code": "Y019",
+      "name": "caramel",
+      "rgb": "#C4913E"
+    },
+    {
+      "code": "Y020",
+      "name": "annatto",
+      "rgb": "#CB9360"
+    },
+    {
+      "code": "Y021",
+      "name": "soil",
+      "rgb": "#D7996A"
+    },
+    {
+      "code": "Y022",
+      "name": "brich",
+      "rgb": "#9B6B45"
+    },
+    {
+      "code": "Y023",
+      "name": "tan",
+      "rgb": "#8D5C3E"
+    },
+    {
+      "code": "Y024",
+      "name": "oak",
+      "rgb": "#866A55"
+    },
+    {
+      "code": "Y025",
+      "name": "chocolate",
+      "rgb": "#5D3C37"
+    },
+    {
+      "code": "Y026",
+      "name": "shy",
+      "rgb": "#F8956B"
+    },
+    {
+      "code": "Y027",
+      "name": "coralline",
+      "rgb": "#D5514D"
+    },
+    {
+      "code": "Y028",
+      "name": "ruby",
+      "rgb": "#DB4F3E"
+    },
+    {
+      "code": "Y029",
+      "name": "sunset",
+      "rgb": "#CF3E45"
+    },
+    {
+      "code": "Y030",
+      "name": "vermillion",
+      "rgb": "#9D2234"
+    },
+    {
+      "code": "Y031",
+      "name": "crimson",
+      "rgb": "#9D2234"
+    },
+    {
+      "code": "Y032",
+      "name": "rose",
+      "rgb": "#D668A7"
+    },
+    {
+      "code": "Y033",
+      "name": "taffy",
+      "rgb": "#68393F"
+    },
+    {
+      "code": "Y034",
+      "name": "chestnut",
+      "rgb": "#7D4723"
+    },
+    {
+      "code": "Y035",
+      "name": "ochre",
+      "rgb": "#934A39"
+    },
+    {
+      "code": "Y036",
+      "name": "brick",
+      "rgb": "#6A1A35"
+    },
+    {
+      "code": "Y037",
+      "name": "pork",
+      "rgb": "#F4E2D6"
+    },
+    {
+      "code": "Y038",
+      "name": "baby",
+      "rgb": "#F5DCD8"
+    },
+    {
+      "code": "Y039",
+      "name": "cheek",
+      "rgb": "#F1D8DE"
+    },
+    {
+      "code": "Y040",
+      "name": "sakura",
+      "rgb": "#EEC6DE"
+    },
+    {
+      "code": "Y041",
+      "name": "pink",
+      "rgb": "#F5A3D1"
+    },
+    {
+      "code": "Y042",
+      "name": "azalea",
+      "rgb": "#DB77CF"
+    },
+    {
+      "code": "Y043",
+      "name": "blusher",
+      "rgb": "#E4A0B7"
+    },
+    {
+      "code": "Y044",
+      "name": "wintersweet",
+      "rgb": "#D276A9"
+    },
+    {
+      "code": "Y045",
+      "name": "bleaberry",
+      "rgb": "#C1388A"
+    },
+    {
+      "code": "Y046",
+      "name": "magenta",
+      "rgb": "#DC4A77"
+    },
+    {
+      "code": "Y047",
+      "name": "jam",
+      "rgb": "#9A2461"
+    },
+    {
+      "code": "Y048",
+      "name": "camelia",
+      "rgb": "#A20067"
+    },
+    {
+      "code": "Y049",
+      "name": "bacon",
+      "rgb": "#C97783"
+    },
+    {
+      "code": "Y050",
+      "name": "hyacinth",
+      "rgb": "#D4D5E7"
+    },
+    {
+      "code": "Y051",
+      "name": "magnolia",
+      "rgb": "#BEC2E8"
+    },
+    {
+      "code": "Y052",
+      "name": "wisteria",
+      "rgb": "#BDC6ED"
+    },
+    {
+      "code": "Y053",
+      "name": "cobalt",
+      "rgb": "#A5AFEA"
+    },
+    {
+      "code": "Y054",
+      "name": "azure",
+      "rgb": "#7E84BE"
+    },
+    {
+      "code": "Y055",
+      "name": "lilac",
+      "rgb": "#D9D3EF"
+    },
+    {
+      "code": "Y056",
+      "name": "amethyst",
+      "rgb": "#C2BBE4"
+    },
+    {
+      "code": "Y057",
+      "name": "hydrangea",
+      "rgb": "#C89CCD"
+    },
+    {
+      "code": "Y058",
+      "name": "briar",
+      "rgb": "#A65CBF"
+    },
+    {
+      "code": "Y059",
+      "name": "tuberose",
+      "rgb": "#911F90"
+    },
+    {
+      "code": "Y060",
+      "name": "wine",
+      "rgb": "#6C2988"
+    },
+    {
+      "code": "Y061",
+      "name": "rosemary",
+      "rgb": "#9E6DC6"
+    },
+    {
+      "code": "Y062",
+      "name": "lavender",
+      "rgb": "#907ABB"
+    },
+    {
+      "code": "Y063",
+      "name": "castle",
+      "rgb": "#5D3F87"
+    },
+    {
+      "code": "Y064",
+      "name": "myrtille",
+      "rgb": "#453A86"
+    },
+    {
+      "code": "Y065",
+      "name": "modena",
+      "rgb": "#3D2E55"
+    },
+    {
+      "code": "Y066",
+      "name": "jade",
+      "rgb": "#D9E6CC"
+    },
+    {
+      "code": "Y067",
+      "name": "powderblue",
+      "rgb": "#BFE1E3"
+    },
+    {
+      "code": "Y068",
+      "name": "elsa",
+      "rgb": "#C4DFE8"
+    },
+    {
+      "code": "Y069",
+      "name": "sky",
+      "rgb": "#A4D8EE"
+    },
+    {
+      "code": "Y070",
+      "name": "seacoast",
+      "rgb": "#67ADCF"
+    },
+    {
+      "code": "Y071",
+      "name": "seacoast",
+      "rgb": "#60A7AD"
+    },
+    {
+      "code": "Y072",
+      "name": "agate",
+      "rgb": "#66B5C6"
+    },
+    {
+      "code": "Y073",
+      "name": "turkey",
+      "rgb": "#8CB3DC"
+    },
+    {
+      "code": "Y074",
+      "name": "danube",
+      "rgb": "#577DBE"
+    },
+    {
+      "code": "Y075",
+      "name": "homeland",
+      "rgb": "#4173BC"
+    },
+    {
+      "code": "Y076",
+      "name": "silence",
+      "rgb": "#4A5FBC"
+    },
+    {
+      "code": "Y077",
+      "name": "rambo",
+      "rgb": "#3D54A0"
+    },
+    {
+      "code": "Y078",
+      "name": "montana",
+      "rgb": "#314174"
+    },
+    {
+      "code": "Y079",
+      "name": "prussian",
+      "rgb": "#3D4762"
+    },
+    {
+      "code": "Y080",
+      "name": "shallot",
+      "rgb": "#DDE5B4"
+    },
+    {
+      "code": "Y081",
+      "name": "burgeon",
+      "rgb": "#DADA3C"
+    },
+    {
+      "code": "Y082",
+      "name": "green",
+      "rgb": "#CDE547"
+    },
+    {
+      "code": "Y083",
+      "name": "lime",
+      "rgb": "#A7D446"
+    },
+    {
+      "code": "Y084",
+      "name": "chloe",
+      "rgb": "#A5D38B"
+    },
+    {
+      "code": "Y085",
+      "name": "scallion",
+      "rgb": "#8FD35A"
+    },
+    {
+      "code": "Y086",
+      "name": "mint",
+      "rgb": "#78A54A"
+    },
+    {
+      "code": "Y087",
+      "name": "turquoise",
+      "rgb": "#87CC9D"
+    },
+    {
+      "code": "Y088",
+      "name": "tiffay",
+      "rgb": "#B8DBC7"
+    },
+    {
+      "code": "Y089",
+      "name": "jadeite",
+      "rgb": "#5FAE91"
+    },
+    {
+      "code": "Y090",
+      "name": "starbucks",
+      "rgb": "#3C6E48"
+    },
+    {
+      "code": "Y091",
+      "name": "tree",
+      "rgb": "#33793B"
+    },
+    {
+      "code": "Y092",
+      "name": "forest",
+      "rgb": "#3A6436"
+    },
+    {
+      "code": "Y093",
+      "name": "jasper",
+      "rgb": "#244636"
+    },
+    {
+      "code": "Y094",
+      "name": "barrack",
+      "rgb": "#72833F"
+    },
+    {
+      "code": "Y095",
+      "name": "pudding",
+      "rgb": "#EFE7A9"
+    },
+    {
+      "code": "Y096",
+      "name": "greamy",
+      "rgb": "#E2E2AC"
+    },
+    {
+      "code": "Y097",
+      "name": "lemon",
+      "rgb": "#F5E87F"
+    },
+    {
+      "code": "Y098",
+      "name": "yellow",
+      "rgb": "#F1D937"
+    },
+    {
+      "code": "Y099",
+      "name": "yolk",
+      "rgb": "#F1C530"
+    },
+    {
+      "code": "Y100",
+      "name": "ginger",
+      "rgb": "#DABF3C"
+    },
+    {
+      "code": "Y101",
+      "name": "mousse",
+      "rgb": "#F6D993"
+    },
+    {
+      "code": "Y102",
+      "name": "mango",
+      "rgb": "#E7B53A"
+    },
+    {
+      "code": "Y103",
+      "name": "wheat",
+      "rgb": "#FFBC47"
+    },
+    {
+      "code": "Y104",
+      "name": "salmon",
+      "rgb": "#EBB38E"
+    },
+    {
+      "code": "Y105",
+      "name": "orange",
+      "rgb": "#DF923A"
+    },
+    {
+      "code": "Y106",
+      "name": "tangerine",
+      "rgb": "#F99846"
+    },
+    {
+      "code": "Y107",
+      "name": "Sun-god",
+      "rgb": "#DD781C"
+    },
+    {
+      "code": "Y108",
+      "name": "azure",
+      "rgb": "#E0D1BA"
+    },
+    {
+      "code": "Y109",
+      "name": "coffee",
+      "rgb": "#5E504F"
+    },
+    {
+      "code": "Y110",
+      "name": "cerise",
+      "rgb": "#DF475C"
+    },
+    {
+      "code": "Y111",
+      "name": "meat",
+      "rgb": "#F4D9C4"
+    },
+    {
+      "code": "Y112",
+      "name": "peach",
+      "rgb": "#E9CCC8"
+    },
+    {
+      "code": "Y113",
+      "name": "chauche",
+      "rgb": "#D7E8E2"
+    },
+    {
+      "code": "Y114",
+      "name": "cloud",
+      "rgb": "#C6D3E6"
+    },
+    {
+      "code": "Y115",
+      "name": "maldives",
+      "rgb": "#66B2AE"
+    },
+    {
+      "code": "Y116",
+      "name": "bud",
+      "rgb": "#CCE19E"
+    },
+    {
+      "code": "Y117",
+      "name": "matcha",
+      "rgb": "#9EAE2A"
+    },
+    {
+      "code": "Y118",
+      "name": "ivory",
+      "rgb": "#EAE3D3"
+    },
+    {
+      "code": "Y119",
+      "name": "milk",
+      "rgb": "#EADBC4"
+    },
+    {
+      "code": "Y120",
+      "name": "persimmon",
+      "rgb": "#F26A34"
+    }
+  ]
+}

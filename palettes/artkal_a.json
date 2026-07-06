@@ -1,0 +1,730 @@
+{
+  "brand": "Artkal A",
+  "colors": [
+    {
+      "code": "A01",
+      "name": "White",
+      "rgb": "#EAEEF3"
+    },
+    {
+      "code": "A02",
+      "name": "Black",
+      "rgb": "#292A2B"
+    },
+    {
+      "code": "A03",
+      "name": "Tangerine",
+      "rgb": "#FFA630"
+    },
+    {
+      "code": "A04",
+      "name": "Yellow Orange",
+      "rgb": "#E68739"
+    },
+    {
+      "code": "A05",
+      "name": "Tall Poppy",
+      "rgb": "#CB3531"
+    },
+    {
+      "code": "A06",
+      "name": "Red",
+      "rgb": "#B61927"
+    },
+    {
+      "code": "A07",
+      "name": "Carnation Pink",
+      "rgb": "#E182B0"
+    },
+    {
+      "code": "A08",
+      "name": "Hot Pink",
+      "rgb": "#DC519A"
+    },
+    {
+      "code": "A09",
+      "name": "Magenta",
+      "rgb": "#DA4383"
+    },
+    {
+      "code": "A10",
+      "name": "Picasso",
+      "rgb": "#EADE7F"
+    },
+    {
+      "code": "A11",
+      "name": "Yellow",
+      "rgb": "#EAC125"
+    },
+    {
+      "code": "A12",
+      "name": "Pistachio",
+      "rgb": "#97CF87"
+    },
+    {
+      "code": "A13",
+      "name": "Pastel Green",
+      "rgb": "#8BB23A"
+    },
+    {
+      "code": "A14",
+      "name": "Green",
+      "rgb": "#009053"
+    },
+    {
+      "code": "A15",
+      "name": "Green Tea",
+      "rgb": "#00765F"
+    },
+    {
+      "code": "A16",
+      "name": "Bright Carrot",
+      "rgb": "#F96F40"
+    },
+    {
+      "code": "A17",
+      "name": "Orange",
+      "rgb": "#EB6027"
+    },
+    {
+      "code": "A18",
+      "name": "Sky Blue",
+      "rgb": "#A7CDDE"
+    },
+    {
+      "code": "A19",
+      "name": "Baby Blue",
+      "rgb": "#2EABD8"
+    },
+    {
+      "code": "A20",
+      "name": "Light Blue",
+      "rgb": "#0084CE"
+    },
+    {
+      "code": "A21",
+      "name": "Dark Blue",
+      "rgb": "#004FA4"
+    },
+    {
+      "code": "A22",
+      "name": "Bubble Gun",
+      "rgb": "#F2BFB8"
+    },
+    {
+      "code": "A23",
+      "name": "Sand",
+      "rgb": "#DCA384"
+    },
+    {
+      "code": "A24",
+      "name": "Beeswax",
+      "rgb": "#EED39E"
+    },
+    {
+      "code": "A25",
+      "name": "Lavender",
+      "rgb": "#8A7EC2"
+    },
+    {
+      "code": "A26",
+      "name": "Pastel Lavender",
+      "rgb": "#9165B2"
+    },
+    {
+      "code": "A27",
+      "name": "Purple",
+      "rgb": "#48337E"
+    },
+    {
+      "code": "A28",
+      "name": "Marigold",
+      "rgb": "#B27938"
+    },
+    {
+      "code": "A29",
+      "name": "Buccaneer",
+      "rgb": "#B35540"
+    },
+    {
+      "code": "A30",
+      "name": "Redwood",
+      "rgb": "#9A4541"
+    },
+    {
+      "code": "A31",
+      "name": "Light Brown",
+      "rgb": "#895D49"
+    },
+    {
+      "code": "A32",
+      "name": "Brown",
+      "rgb": "#65463D"
+    },
+    {
+      "code": "A33",
+      "name": "Gray",
+      "rgb": "#959698"
+    },
+    {
+      "code": "A34",
+      "name": "Dark Gray",
+      "rgb": "#70757B"
+    },
+    {
+      "code": "A35",
+      "name": "Silver",
+      "rgb": "#676B73"
+    },
+    {
+      "code": "A36",
+      "name": "Old Pink",
+      "rgb": "#CE6D83"
+    },
+    {
+      "code": "A37",
+      "name": "True Blue",
+      "rgb": "#0078BF"
+    },
+    {
+      "code": "A38",
+      "name": "Turquoise",
+      "rgb": "#55A4D9"
+    },
+    {
+      "code": "A39",
+      "name": "Shadow Green",
+      "rgb": "#9EC9CD"
+    },
+    {
+      "code": "A40",
+      "name": "Key Lomen Pie",
+      "rgb": "#CDC03F"
+    },
+    {
+      "code": "A41",
+      "name": "Pastel Yellow",
+      "rgb": "#E1D367"
+    },
+    {
+      "code": "A42",
+      "name": "Sandstorm",
+      "rgb": "#E1C835"
+    },
+    {
+      "code": "A43",
+      "name": "Paprika",
+      "rgb": "#B11836"
+    },
+    {
+      "code": "A44",
+      "name": "Burning Sand",
+      "rgb": "#EE927C"
+    },
+    {
+      "code": "A46",
+      "name": "Canary",
+      "rgb": "#E2E65D"
+    },
+    {
+      "code": "A47",
+      "name": "Vanilla",
+      "rgb": "#E9C1A6"
+    },
+    {
+      "code": "A48",
+      "name": "Corn",
+      "rgb": "#ECC03D"
+    },
+    {
+      "code": "A49",
+      "name": "Raspberry Pink",
+      "rgb": "#EF67B2"
+    },
+    {
+      "code": "A50",
+      "name": "Maverick",
+      "rgb": "#C0B7D7"
+    },
+    {
+      "code": "A51",
+      "name": "Spring Sun",
+      "rgb": "#DFDABD"
+    },
+    {
+      "code": "A52",
+      "name": "Butterfly Bush",
+      "rgb": "#4F3989"
+    },
+    {
+      "code": "A53",
+      "name": "Bright Green",
+      "rgb": "#8EC324"
+    },
+    {
+      "code": "A54",
+      "name": "Medium Turquoise",
+      "rgb": "#00A5A1"
+    },
+    {
+      "code": "A56",
+      "name": "Oslo Gray",
+      "rgb": "#82878B"
+    },
+    {
+      "code": "A58",
+      "name": "Black Rock",
+      "rgb": "#36384D"
+    },
+    {
+      "code": "A60",
+      "name": "Sea Mist",
+      "rgb": "#B2D7CE"
+    },
+    {
+      "code": "A69",
+      "name": "Mine Shaft",
+      "rgb": "#383E44"
+    },
+    {
+      "code": "A70",
+      "name": "Brunswick Green",
+      "rgb": "#153838"
+    },
+    {
+      "code": "A71",
+      "name": "Goldenrod",
+      "rgb": "#E8AE00"
+    },
+    {
+      "code": "A72",
+      "name": "Pastel Orange",
+      "rgb": "#D9B35E"
+    },
+    {
+      "code": "A73",
+      "name": "Sienna",
+      "rgb": "#BB6833"
+    },
+    {
+      "code": "A74",
+      "name": "Deer",
+      "rgb": "#BF9168"
+    },
+    {
+      "code": "A75",
+      "name": "Clay",
+      "rgb": "#AA744E"
+    },
+    {
+      "code": "A76",
+      "name": "Coral Red",
+      "rgb": "#EC625E"
+    },
+    {
+      "code": "A77",
+      "name": "Deep Chestnut",
+      "rgb": "#BE5D65"
+    },
+    {
+      "code": "A78",
+      "name": "Red Wine",
+      "rgb": "#99323A"
+    },
+    {
+      "code": "A79",
+      "name": "Light Sea Blue",
+      "rgb": "#68C4D2"
+    },
+    {
+      "code": "A80",
+      "name": "Sea Blue",
+      "rgb": "#0093A9"
+    },
+    {
+      "code": "A81",
+      "name": "Steel Blue",
+      "rgb": "#5AB0BF"
+    },
+    {
+      "code": "A82",
+      "name": "Azure",
+      "rgb": "#009EC2"
+    },
+    {
+      "code": "A83",
+      "name": "Dark Steel Blue",
+      "rgb": "#0084B2"
+    },
+    {
+      "code": "A84",
+      "name": "Drark Algae",
+      "rgb": "#ADAD29"
+    },
+    {
+      "code": "A85",
+      "name": "Dark Olive",
+      "rgb": "#8F8E3C"
+    },
+    {
+      "code": "A86",
+      "name": "Jade Green",
+      "rgb": "#007D2B"
+    },
+    {
+      "code": "A87",
+      "name": "Ghost While",
+      "rgb": "#D4D8D3"
+    },
+    {
+      "code": "A88",
+      "name": "Ash Grey",
+      "rgb": "#C2C4C2"
+    },
+    {
+      "code": "A89",
+      "name": "Light Gray",
+      "rgb": "#A7ACAD"
+    },
+    {
+      "code": "A90",
+      "name": "Charcoal Gray",
+      "rgb": "#565A5E"
+    },
+    {
+      "code": "A91",
+      "name": "Dandelion",
+      "rgb": "#CEA433"
+    },
+    {
+      "code": "A92",
+      "name": "Pale Skin",
+      "rgb": "#DCB794"
+    },
+    {
+      "code": "A93",
+      "name": "Warm Blush",
+      "rgb": "#DD9285"
+    },
+    {
+      "code": "A94",
+      "name": "Salmon",
+      "rgb": "#E07B69"
+    },
+    {
+      "code": "A95",
+      "name": "Apricot",
+      "rgb": "#EF7F61"
+    },
+    {
+      "code": "A96",
+      "name": "Papaya",
+      "rgb": "#DC772B"
+    },
+    {
+      "code": "A97",
+      "name": "Himalaya Blue",
+      "rgb": "#6AAEDB"
+    },
+    {
+      "code": "A98",
+      "name": "Waterfall",
+      "rgb": "#61BBD3"
+    },
+    {
+      "code": "A99",
+      "name": "Lagoon",
+      "rgb": "#279BBE"
+    },
+    {
+      "code": "A100",
+      "name": "Electric Blue",
+      "rgb": "#00A7E3"
+    },
+    {
+      "code": "A101",
+      "name": "Pool Blue",
+      "rgb": "#0077CA"
+    },
+    {
+      "code": "A102",
+      "name": "Caribbian Blue",
+      "rgb": "#005AA9"
+    },
+    {
+      "code": "A103",
+      "name": "Deep Water",
+      "rgb": "#007F9E"
+    },
+    {
+      "code": "A104",
+      "name": "Petrol Blue",
+      "rgb": "#007D91"
+    },
+    {
+      "code": "A105",
+      "name": "Wegdewood Blue",
+      "rgb": "#00649A"
+    },
+    {
+      "code": "A106",
+      "name": "Pond Blue",
+      "rgb": "#006C9F"
+    },
+    {
+      "code": "A107",
+      "name": "Seashell Beige",
+      "rgb": "#CFC179"
+    },
+    {
+      "code": "A108",
+      "name": "Beige",
+      "rgb": "#C4AE64"
+    },
+    {
+      "code": "A109",
+      "name": "Beach Beige",
+      "rgb": "#AB9745"
+    },
+    {
+      "code": "A110",
+      "name": "Caffe Latté",
+      "rgb": "#978138"
+    },
+    {
+      "code": "A111",
+      "name": "Oaktree Brown",
+      "rgb": "#907C41"
+    },
+    {
+      "code": "A112",
+      "name": "Khaki",
+      "rgb": "#B6AE84"
+    },
+    {
+      "code": "A113",
+      "name": "Light Greengray",
+      "rgb": "#A59F65"
+    },
+    {
+      "code": "A114",
+      "name": "Mossy Green",
+      "rgb": "#938D54"
+    },
+    {
+      "code": "A115",
+      "name": "Earth Green",
+      "rgb": "#8D8B51"
+    },
+    {
+      "code": "A116",
+      "name": "Sage Green",
+      "rgb": "#7F7E49"
+    },
+    {
+      "code": "A117",
+      "name": "Pinetree Green",
+      "rgb": "#5B6E35"
+    },
+    {
+      "code": "A118",
+      "name": "Frosty Blue",
+      "rgb": "#8AD5C9"
+    },
+    {
+      "code": "A119",
+      "name": "Polar Mint",
+      "rgb": "#7CD2A5"
+    },
+    {
+      "code": "A120",
+      "name": "Celadon Green",
+      "rgb": "#72AC9A"
+    },
+    {
+      "code": "A121",
+      "name": "Eucalyptus",
+      "rgb": "#00B26F"
+    },
+    {
+      "code": "A122",
+      "name": "Clover Field",
+      "rgb": "#3EB724"
+    },
+    {
+      "code": "A123",
+      "name": "Pooltable Felt",
+      "rgb": "#0D7535"
+    },
+    {
+      "code": "A124",
+      "name": "Snake Green",
+      "rgb": "#007D6E"
+    },
+    {
+      "code": "A125",
+      "name": "Dark Eucalyptus",
+      "rgb": "#006E69"
+    },
+    {
+      "code": "A126",
+      "name": "Marsmallow Rose",
+      "rgb": "#DFC3E1"
+    },
+    {
+      "code": "A127",
+      "name": "Light Grape",
+      "rgb": "#D38ED4"
+    },
+    {
+      "code": "A128",
+      "name": "Rosebud Pink",
+      "rgb": "#D5A6BA"
+    },
+    {
+      "code": "A129",
+      "name": "Fuschia",
+      "rgb": "#D6668E"
+    },
+    {
+      "code": "A130",
+      "name": "Candy Violet",
+      "rgb": "#B8AAD9"
+    },
+    {
+      "code": "A131",
+      "name": "Flamingo",
+      "rgb": "#DF486D"
+    },
+    {
+      "code": "A132",
+      "name": "Pink Plum",
+      "rgb": "#BC3CA6"
+    },
+    {
+      "code": "A133",
+      "name": "Amethyst",
+      "rgb": "#803897"
+    },
+    {
+      "code": "A134",
+      "name": "Moonlight Blue",
+      "rgb": "#A7BAE1"
+    },
+    {
+      "code": "A135",
+      "name": "Summer Rain",
+      "rgb": "#AFB8DF"
+    },
+    {
+      "code": "A136",
+      "name": "Azur Blue",
+      "rgb": "#6B9AD4"
+    },
+    {
+      "code": "A137",
+      "name": "Cornflower Blue",
+      "rgb": "#5A89CE"
+    },
+    {
+      "code": "A138",
+      "name": "Forget Me Not",
+      "rgb": "#658AD0"
+    },
+    {
+      "code": "A139",
+      "name": "Indigo",
+      "rgb": "#566CBD"
+    },
+    {
+      "code": "A140",
+      "name": "Horizon Blue",
+      "rgb": "#4D74C6"
+    },
+    {
+      "code": "A141",
+      "name": "Cobolt",
+      "rgb": "#416DBE"
+    },
+    {
+      "code": "A142",
+      "name": "Royal Blue",
+      "rgb": "#30429E"
+    },
+    {
+      "code": "A143",
+      "name": "Marine",
+      "rgb": "#024288"
+    },
+    {
+      "code": "A144",
+      "name": "Pale Yellow Moss",
+      "rgb": "#D6CA6A"
+    },
+    {
+      "code": "A145",
+      "name": "Bloodrose Red",
+      "rgb": "#9D1A38"
+    },
+    {
+      "code": "A146",
+      "name": "Spearmint",
+      "rgb": "#80B7A1"
+    },
+    {
+      "code": "A147",
+      "name": "Mocha",
+      "rgb": "#7A594F"
+    },
+    {
+      "code": "A148",
+      "name": "Creme",
+      "rgb": "#EFDBA1"
+    },
+    {
+      "code": "A149",
+      "name": "Iris Violet",
+      "rgb": "#8884D0"
+    },
+    {
+      "code": "A150",
+      "name": "Forrest Green",
+      "rgb": "#345621"
+    },
+    {
+      "code": "A151",
+      "name": "Lilac",
+      "rgb": "#AEADDC"
+    },
+    {
+      "code": "A152",
+      "name": "Pale Lilac",
+      "rgb": "#BCC3E1"
+    },
+    {
+      "code": "A153",
+      "name": "Sahara Sand",
+      "rgb": "#E3C09A"
+    },
+    {
+      "code": "A154",
+      "name": "Sunkissed Teint",
+      "rgb": "#C58B60"
+    },
+    {
+      "code": "A155",
+      "name": "Steel Grey",
+      "rgb": "#5A5F65"
+    },
+    {
+      "code": "A156",
+      "name": "Iron Grey",
+      "rgb": "#4C5156"
+    },
+    {
+      "code": "A157",
+      "name": "Pepper",
+      "rgb": "#3A3E42"
+    }
+  ]
+}

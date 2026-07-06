@@ -1,0 +1,520 @@
+{
+  "brand": "Perler",
+  "colors": [
+    {
+      "code": "80-15089",
+      "name": "Neon Blue",
+      "rgb": "#406AE1"
+    },
+    {
+      "code": "80-15179",
+      "name": "Evergreen",
+      "rgb": "#305545"
+    },
+    {
+      "code": "80-15181",
+      "name": "Light Grey",
+      "rgb": "#B3BAB8"
+    },
+    {
+      "code": "80-15182",
+      "name": "Lavender",
+      "rgb": "#AF9FCE"
+    },
+    {
+      "code": "80-15199",
+      "name": "Shamrock",
+      "rgb": "#008F53"
+    },
+    {
+      "code": "80-15200",
+      "name": "Cobalt",
+      "rgb": "#0065B1"
+    },
+    {
+      "code": "80-15201",
+      "name": "Midnight",
+      "rgb": "#2F3C55"
+    },
+    {
+      "code": "80-15202",
+      "name": "Robin's Egg",
+      "rgb": "#A9CDD5"
+    },
+    {
+      "code": "80-15203",
+      "name": "Flamingo",
+      "rgb": "#F2AFB7"
+    },
+    {
+      "code": "80-15204",
+      "name": "Salmon",
+      "rgb": "#E1747A"
+    },
+    {
+      "code": "80-15205",
+      "name": "Fawn",
+      "rgb": "#C9A385"
+    },
+    {
+      "code": "80-15206",
+      "name": "Pewter",
+      "rgb": "#94A19D"
+    },
+    {
+      "code": "80-15207",
+      "name": "Charcoal",
+      "rgb": "#4F595A"
+    },
+    {
+      "code": "80-15208",
+      "name": "Toasted Marshmallow",
+      "rgb": "#DEDACE"
+    },
+    {
+      "code": "80-15210",
+      "name": "Orchid",
+      "rgb": "#B1628E"
+    },
+    {
+      "code": "80-15211",
+      "name": "Tomato",
+      "rgb": "#D14337"
+    },
+    {
+      "code": "80-15212",
+      "name": "Spice",
+      "rgb": "#D9593A"
+    },
+    {
+      "code": "80-15213",
+      "name": "Apricot",
+      "rgb": "#F5A168"
+    },
+    {
+      "code": "80-15214",
+      "name": "Sherbet",
+      "rgb": "#D8E47C"
+    },
+    {
+      "code": "80-15215",
+      "name": "Mist",
+      "rgb": "#93B0BD"
+    },
+    {
+      "code": "80-15216",
+      "name": "Sky",
+      "rgb": "#4AC0D8"
+    },
+    {
+      "code": "80-15217",
+      "name": "Lagoon",
+      "rgb": "#00A4AC"
+    },
+    {
+      "code": "80-15218",
+      "name": "Teal",
+      "rgb": "#047F8A"
+    },
+    {
+      "code": "80-15219",
+      "name": "Fern",
+      "rgb": "#7F971A"
+    },
+    {
+      "code": "80-15220",
+      "name": "Olive",
+      "rgb": "#696E31"
+    },
+    {
+      "code": "80-15239",
+      "name": "Mocha",
+      "rgb": "#C8B693"
+    },
+    {
+      "code": "80-15240",
+      "name": "Mint",
+      "rgb": "#B3EED5"
+    },
+    {
+      "code": "80-15241",
+      "name": "Sour Apple",
+      "rgb": "#A3DE6F"
+    },
+    {
+      "code": "80-15242",
+      "name": "Cotton Candy",
+      "rgb": "#F479B0"
+    },
+    {
+      "code": "80-15243",
+      "name": "Grape",
+      "rgb": "#503B9C"
+    },
+    {
+      "code": "80-15244",
+      "name": "Rose",
+      "rgb": "#D25D72"
+    },
+    {
+      "code": "80-15245",
+      "name": "Iris",
+      "rgb": "#4E56A3"
+    },
+    {
+      "code": "80-15246",
+      "name": "Tangerine",
+      "rgb": "#FD5918"
+    },
+    {
+      "code": "80-15247",
+      "name": "Forest",
+      "rgb": "#005D57"
+    },
+    {
+      "code": "80-15248",
+      "name": "Eggplant",
+      "rgb": "#6F3255"
+    },
+    {
+      "code": "80-15249",
+      "name": "Honey",
+      "rgb": "#DA8C2C"
+    },
+    {
+      "code": "80-15250",
+      "name": "Gingerbread",
+      "rgb": "#7E5446"
+    },
+    {
+      "code": "80-15251",
+      "name": "Thistle",
+      "rgb": "#8C8CA7"
+    },
+    {
+      "code": "80-15252",
+      "name": "Slate Blue",
+      "rgb": "#5E6D7B"
+    },
+    {
+      "code": "80-15253",
+      "name": "Denim",
+      "rgb": "#4C6388"
+    },
+    {
+      "code": "80-15254",
+      "name": "Sage",
+      "rgb": "#9AA98E"
+    },
+    {
+      "code": "80-15255",
+      "name": "Orange Cream",
+      "rgb": "#EFB79B"
+    },
+    {
+      "code": "80-15256",
+      "name": "Fruit Punch",
+      "rgb": "#CA3B65"
+    },
+    {
+      "code": "80-15257",
+      "name": "Fuchsia",
+      "rgb": "#CB59B9"
+    },
+    {
+      "code": "80-15258",
+      "name": "Mulberry",
+      "rgb": "#714875"
+    },
+    {
+      "code": "80-15259",
+      "name": "Slime",
+      "rgb": "#C8C85C"
+    },
+    {
+      "code": "80-15260",
+      "name": "Stone",
+      "rgb": "#988C8C"
+    },
+    {
+      "code": "80-15261",
+      "name": "Dark Spruce",
+      "rgb": "#14313B"
+    },
+    {
+      "code": "80-15262",
+      "name": "Cocoa",
+      "rgb": "#392928"
+    },
+    {
+      "code": "80-15263",
+      "name": "Celery",
+      "rgb": "#BED4A6"
+    },
+    {
+      "code": "80-15265",
+      "name": "Twilight Plum",
+      "rgb": "#C685B1"
+    },
+    {
+      "code": "80-15266",
+      "name": "Caribbean Sea",
+      "rgb": "#6CC8AD"
+    },
+    {
+      "code": "80-15267",
+      "name": "Frosted Lilac",
+      "rgb": "#CDB7C3"
+    },
+    {
+      "code": "80-15268",
+      "name": "Sunflower",
+      "rgb": "#DEBA0B"
+    },
+    {
+      "code": "80-15269",
+      "name": "Lemon",
+      "rgb": "#F6D901"
+    },
+    {
+      "code": "80-15272",
+      "name": "Coral",
+      "rgb": "#FF9A8B"
+    },
+    {
+      "code": "80-15273",
+      "name": "Brick",
+      "rgb": "#FC9574"
+    },
+    {
+      "code": "80-15274",
+      "name": "Rich Butter",
+      "rgb": "#F6CA69"
+    },
+    {
+      "code": "80-15275",
+      "name": "Peacock",
+      "rgb": "#0090AC"
+    },
+    {
+      "code": "80-15276",
+      "name": "Carnation Pink",
+      "rgb": "#F8C7C9"
+    },
+    {
+      "code": "80-15961",
+      "name": "Cherry",
+      "rgb": "#9D2B3A"
+    },
+    {
+      "code": "80-19001",
+      "name": "White",
+      "rgb": "#EAEFEE"
+    },
+    {
+      "code": "80-19002",
+      "name": "Creme",
+      "rgb": "#E1E2BB"
+    },
+    {
+      "code": "80-19003",
+      "name": "Yellow",
+      "rgb": "#E7CE3E"
+    },
+    {
+      "code": "80-19004",
+      "name": "Orange",
+      "rgb": "#EB7B31"
+    },
+    {
+      "code": "80-19005",
+      "name": "Red",
+      "rgb": "#B0353C"
+    },
+    {
+      "code": "80-19006",
+      "name": "Bubblegum",
+      "rgb": "#D8729A"
+    },
+    {
+      "code": "80-19007",
+      "name": "Purple",
+      "rgb": "#684B86"
+    },
+    {
+      "code": "80-19008",
+      "name": "Dark Blue",
+      "rgb": "#0E5092"
+    },
+    {
+      "code": "80-19009",
+      "name": "Light Blue",
+      "rgb": "#278CC9"
+    },
+    {
+      "code": "80-19010",
+      "name": "Dark Green",
+      "rgb": "#007B4E"
+    },
+    {
+      "code": "80-19011",
+      "name": "Light Green",
+      "rgb": "#18C7B1"
+    },
+    {
+      "code": "80-19012",
+      "name": "Brown",
+      "rgb": "#674C44"
+    },
+    {
+      "code": "80-19017",
+      "name": "Grey",
+      "rgb": "#909497"
+    },
+    {
+      "code": "80-19018",
+      "name": "Black",
+      "rgb": "#323234"
+    },
+    {
+      "code": "80-19020",
+      "name": "Rust",
+      "rgb": "#995043"
+    },
+    {
+      "code": "80-19021",
+      "name": "Light Brown",
+      "rgb": "#936848"
+    },
+    {
+      "code": "80-19033",
+      "name": "Peach",
+      "rgb": "#E9BFB9"
+    },
+    {
+      "code": "80-19035",
+      "name": "Tan",
+      "rgb": "#C5AC90"
+    },
+    {
+      "code": "80-19038",
+      "name": "Magenta",
+      "rgb": "#E04284"
+    },
+    {
+      "code": "80-19052",
+      "name": "Pastel Blue",
+      "rgb": "#4A9CCF"
+    },
+    {
+      "code": "80-19053",
+      "name": "Pastel Green",
+      "rgb": "#6DCC94"
+    },
+    {
+      "code": "80-19054",
+      "name": "Pastel Lavender",
+      "rgb": "#937FBF"
+    },
+    {
+      "code": "80-19056",
+      "name": "Pastel Yellow",
+      "rgb": "#E9E290"
+    },
+    {
+      "code": "80-19057",
+      "name": "Cheddar",
+      "rgb": "#FBB146"
+    },
+    {
+      "code": "80-19058",
+      "name": "Toothpaste",
+      "rgb": "#96D1D4"
+    },
+    {
+      "code": "80-19059",
+      "name": "Hot Coral",
+      "rgb": "#DD595B"
+    },
+    {
+      "code": "80-19060",
+      "name": "Plum",
+      "rgb": "#A75D9D"
+    },
+    {
+      "code": "80-19061",
+      "name": "Kiwi Lime",
+      "rgb": "#69B845"
+    },
+    {
+      "code": "80-19062",
+      "name": "Turquoise",
+      "rgb": "#0098C5"
+    },
+    {
+      "code": "80-19063",
+      "name": "Blush",
+      "rgb": "#F99297"
+    },
+    {
+      "code": "80-19070",
+      "name": "Periwinkle Blue",
+      "rgb": "#6683B7"
+    },
+    {
+      "code": "80-19079",
+      "name": "Light Pink",
+      "rgb": "#E1BCCE"
+    },
+    {
+      "code": "80-19080",
+      "name": "Green",
+      "rgb": "#4DAB64"
+    },
+    {
+      "code": "80-19083",
+      "name": "Pink",
+      "rgb": "#D45496"
+    },
+    {
+      "code": "80-19088",
+      "name": "Raspberry",
+      "rgb": "#983864"
+    },
+    {
+      "code": "80-19090",
+      "name": "Butterscotch",
+      "rgb": "#DA9964"
+    },
+    {
+      "code": "80-19091",
+      "name": "Parrot Green",
+      "rgb": "#009188"
+    },
+    {
+      "code": "80-19092",
+      "name": "Dark Grey",
+      "rgb": "#585C61"
+    },
+    {
+      "code": "80-19093",
+      "name": "Blueberry Creme",
+      "rgb": "#85A8E3"
+    },
+    {
+      "code": "80-19096",
+      "name": "Cranapple",
+      "rgb": "#843947"
+    },
+    {
+      "code": "80-19097",
+      "name": "Prickly Pear",
+      "rgb": "#BBC938"
+    },
+    {
+      "code": "80-19098",
+      "name": "Sand",
+      "rgb": "#E5BE9E"
+    }
+  ]
+}
