@@ -244,6 +244,35 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
 
 ---
 
+## M10 — Shippable App（收藏 + 品牌化 + 变现 + 上架 + 更多色卡）
+
+**目标：** 把 App 从「离线可用」推向「可上架 App Store / Google Play」。五条工作线，
+其中 1–4 是移动端 + 发布工程，5 是引擎侧（可独立并行，CLI 先验证）。
+
+- **收藏 Tab（本地存储）** — 新增独立「收藏」Tab，记录历史保存过的拼豆方案并可
+  一键调起。这就是 ARCHITECTURE.md 里 deferred 的 `SaveProject` / domain 层——
+  落地时才建 domain 层（M9 结果页只预留「保存到相册」离物化出口，in-app 持久化
+  留到这里）。本地存储方案（sqlite / hive / isar 等）决策时定；存 `pattern.json`
+  \+ 元数据 + 预览。
+- **中文定名 + 图标 + i18n** — 起正式中文 App 名（当前 `beadsmith` 是占位）、设计
+  应用图标（当前无正式 icon）、把硬编码中文文案抽成 i18n（flutter gen-l10n /
+  intl），至少中英双语。
+- **接入 Google Ads** — 移动端接 AdMob（banner / 插屏 / 激励，形式待定）变现。
+- **上架 App Store + Google Play** — M9 一直 defer 的 release engineering：签名
+  （Android keystore，当前 `app/build.gradle.kts` 用 debug key 占位有 TODO）、
+  商店元数据/截图/隐私声明、上传。需付费开发者账号。
+- **更多拼豆色卡（bead-core palette）** — 优先级：① **MARD**（大陆最实用，图纸/
+  采购常用，最高优先）② **Artkal**（已有 `artkal_s.json`，补齐其它系列）③ **Hama /
+  Perler**（国际兼容，资料多）④ **COCO / 漫漫 / 盼盼 / 咪小窝**（国内补充，作可选
+  色卡）⑤ **Nabbi**（补充进口体系）。引擎侧按 `palettes/*.json` 格式
+  （`{brand, colors:[{code,name,rgb}]}`）加文件走 `load_palette` 校验即可；App 侧要
+  让用户能选色卡（当前硬编码 artkal_s，牵动 FFI/UI 的「选调色板」能力）。**确定性：**
+  新增色卡不改算法、不动 golden。
+
+> 上架（第 4 条）依赖收藏 + 定名/图标的完成度——那是「像成品」的最低要求。
+
+---
+
 ## Notes
 
 - **Determinism is a gate, not a nicety.** Every milestone from M2 on must
