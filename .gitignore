@@ -3,3 +3,4 @@
 /result
 tests/golden/*.actual
 .dart_tool/
+/design-previews

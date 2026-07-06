@@ -52,6 +52,9 @@ dependencies:
   # the App injects its own ExternalLibrary at init (see design D2).
   bead_ffi:
     path: ../../crates/bead-ffi/dart
+  # Saves the generated preview/grid PNG to the device photo album so the
+  # result survives a background kill. Exact-pinned like the rest.
+  gal: 2.3.2
 
 dev_dependencies:
   flutter_test:

@@ -36,8 +36,8 @@ class GeneratePage extends ConsumerStatefulWidget {
 }
 
 class _GeneratePageState extends ConsumerState<GeneratePage> {
-  final _width = TextEditingController(text: '50');
-  final _height = TextEditingController(text: '50');
+  final _width = TextEditingController(text: '100');
+  final _height = TextEditingController(text: '100');
   bool _busy = false;
   String? _error;
 
@@ -79,9 +79,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   void initState() {
     super.initState();
     _aspect = ref.read(cropAspectProvider);
-    // Seed height from the 50-bead default width so the initial pair obeys the
+    // Seed height from the 100-bead default width so the initial pair obeys the
     // lock even for a non-square crop.
-    _height.text = '${_clampSide((50 / _aspect).round())}';
+    _height.text = '${_clampSide((100 / _aspect).round())}';
   }
 
   @override
