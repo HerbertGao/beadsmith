@@ -21,7 +21,18 @@ Future<void> main() async {
   // Pre-load persisted settings so the settings Notifier reads them synchronously
   // on the first frame — no not-ready window, no "default then overwrite" race
   // (design D4). Injected via override so the Notifier reads the ready instance.
-  final prefs = await SharedPreferences.getInstance();
+  final SharedPreferences prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+  } catch (e) {
+    // Degrade like the FFI path: a startup prefs failure shows a readable screen
+    // instead of an unhandled crash. (The settings Notifier needs a ready prefs
+    // instance to build, so we can't silently proceed without it.)
+    runApp(MaterialApp(
+      home: Scaffold(body: Center(child: Text('设置加载失败：$e'))),
+    ));
+    return;
+  }
   runApp(ProviderScope(
     overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
     child: const BeadsmithApp(),
