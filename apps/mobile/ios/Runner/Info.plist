@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>将生成的拼豆图案保存到相册</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>选择图片以生成拼豆图案</string>
 	<key>UIApplicationSceneManifest</key>
