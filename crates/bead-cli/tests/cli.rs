@@ -153,20 +153,24 @@ fn cli_generate_and_palette_subcommands() {
         "palette validate <bad> stderr must surface the core reason (\"no colors\"); got: {bad_stderr:?}"
     );
 
-    // --- stub commands: exit non-zero (clap exit 1) + "coming soon" ---------
+    // --- palette list: prints the 14 built-in palettes ---------------------
     let list = Command::new(BIN)
         .args(["palette", "list"])
         .output()
         .expect("run palette list");
-    assert!(
-        !list.status.success(),
-        "palette list (stub) must exit non-zero"
+    assert!(list.status.success(), "palette list must exit zero");
+    let list_stdout = String::from_utf8_lossy(&list.stdout);
+    assert_eq!(
+        list_stdout.lines().count(),
+        14,
+        "palette list must print one line per built-in palette; got: {list_stdout:?}"
     );
     assert!(
-        String::from_utf8_lossy(&list.stderr).contains("coming soon"),
-        "palette list stderr must contain \"coming soon\""
+        list_stdout.contains("mard") && list_stdout.contains("MARD"),
+        "palette list must surface each palette's id and brand; got: {list_stdout:?}"
     );
 
+    // --- stub commands: exit non-zero (clap exit 1) + "coming soon" ---------
     let inspect = Command::new(BIN)
         .arg("inspect")
         .arg(work.join("whatever"))
