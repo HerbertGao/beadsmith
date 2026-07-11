@@ -17,6 +17,7 @@ adaptive_icon_background — no separate background PNG needed.
 This is a disposable design helper; the PNG products are what's committed.
 """
 from PIL import Image, ImageDraw
+from pathlib import Path
 import random
 
 SIZE = 1024
@@ -96,19 +97,21 @@ def save(img, path):
     img.resize((SIZE, SIZE), Image.LANCZOS).save(path)
 
 
-OUT = "assets/icon"
+# Resolve relative to this script (apps/mobile/tool/) so re-runs work from any cwd.
+OUT = Path(__file__).resolve().parent.parent / "assets" / "icon"
+OUT.mkdir(parents=True, exist_ok=True)
 
 # Android adaptive foreground: heart in center ~64%, transparent margin+holes.
 fg = bead_layer(content_px=SIZE * 0.64)
-save(fg, f"{OUT}/ic_foreground.png")
+save(fg, OUT / "ic_foreground.png")
 
 # Full-bleed: cream ground + heart with padding (~78% content), then flatten.
 bl = bead_layer(content_px=SIZE * 0.78)
-full = Image.new("RGBA", (SIZE * SS, SIZE * SS), BG + (255,))
+full = Image.new("RGBA", (SIZE * SS, SIZE * SS), (*BG, 255))
 full.alpha_composite(bl)
 full_rgb = full.convert("RGB").resize((SIZE, SIZE), Image.LANCZOS)  # no alpha
-full_rgb.save(f"{OUT}/app_icon_ios.png")
-full_rgb.save(f"{OUT}/app_icon.png")
+full_rgb.save(OUT / "app_icon_ios.png")
+full_rgb.save(OUT / "app_icon.png")
 
 print("wrote ic_foreground.png, app_icon_ios.png, app_icon.png ->", OUT)
 print("adaptive_icon_background hex = #%02X%02X%02X" % BG)
