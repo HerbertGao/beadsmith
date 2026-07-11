@@ -165,9 +165,30 @@ fn cli_generate_and_palette_subcommands() {
         14,
         "palette list must print one line per built-in palette; got: {list_stdout:?}"
     );
+    // Every row must carry the full `<id> <brand> <N> colors` contract — guards a
+    // format regression that drops the count/brand field, which the line count and
+    // a single-sample check would miss.
+    for line in list_stdout.lines() {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        assert!(
+            tokens.len() >= 4
+                && *tokens.last().unwrap() == "colors"
+                && tokens[tokens.len() - 2].parse::<u32>().is_ok(),
+            "each row must be `<id> <brand> <N> colors`; got: {line:?}"
+        );
+    }
+    // Two full rows spot-checked (id + brand on one line), not just one.
     assert!(
-        list_stdout.contains("mard") && list_stdout.contains("MARD"),
-        "palette list must surface each palette's id and brand; got: {list_stdout:?}"
+        list_stdout
+            .lines()
+            .any(|l| l.contains("mard") && l.contains("MARD")),
+        "mard's row must carry its id + brand; got: {list_stdout:?}"
+    );
+    assert!(
+        list_stdout
+            .lines()
+            .any(|l| l.contains("yant") && l.contains("Yant")),
+        "yant's row must carry its id + brand; got: {list_stdout:?}"
     );
 
     // --- stub commands: exit non-zero (clap exit 1) + "coming soon" ---------

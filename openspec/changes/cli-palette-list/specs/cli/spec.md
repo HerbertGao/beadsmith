@@ -14,7 +14,7 @@
 ### 需求:palette list 列出内置色卡
 `bead-cli palette list` MUST 列出**随二进制内置的**色卡清单，每份一行含 **id、品牌名（`brand`）、色数**，以**退出码 0** 结束、不 panic、不读取任何外部文件。
 
-内置色卡在 CLI 层用 `include_str!` **编译期嵌入**（**不**扫文件系统——`bead-core` 保持无 fs（规则 1），且二进制装到任何位置都可列、结果确定）。`brand` 与色数一律**由 `load_palette` 解析各内置 JSON 得出**，**不硬编码**（JSON 文件为唯一真相源，防漂移）。内置集合与顺序**对齐** App 的 `palette_registry.dart`（当前 14 份：MARD → Artkal S/A/C/M/R → Hama Midi/Maxi/Mini → Perler/Caps/Mini → Nabbi → Yant）；**排除** AGPL 受阻的 `palettes/_unlicensed/` 各牌。
+内置色卡在 CLI 层用 `include_str!` **编译期嵌入**（**不**扫文件系统——`bead-core` 保持无 fs（规则 1），且二进制装到任何位置都可列、结果确定）。`brand` 与色数一律**由 `load_palette` 解析各内置 JSON 得出**，**不硬编码**（JSON 文件为唯一真相源，防漂移）。内置**集合**对齐 App 的 `palette_registry.dart`（当前 14 份：MARD → Artkal S/A/C/M/R → Hama Midi/Maxi/Mini → Perler/Caps/Mini → Nabbi → Yant）——集合由 `builtin_palettes_match_source_dir` 测试与源 `palettes/` 目录锁定；**数组顺序**（= `palette list` 展示序）按 App 展示序**手工保持、非测试强锁**（列表顺序属外观）。**排除** AGPL 受阻的 `palettes/_unlicensed/` 各牌。
 
 #### 场景:列出内置色卡各一行
 - **当** 运行 `bead-cli palette list`
