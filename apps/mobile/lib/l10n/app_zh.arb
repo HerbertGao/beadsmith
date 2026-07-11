@@ -1,0 +1,93 @@
+{
+  "@@locale": "zh",
+  "appTitle": "拼豆匠",
+  "@appTitle": {
+    "description": "应用显示名 / MaterialApp 标题"
+  },
+
+  "homeHeadline": "拼豆图纸生成器",
+  "homeSubtitle": "选一张图片，裁剪后生成拼豆图纸",
+  "homePickImage": "选择图片",
+
+  "cropTitle": "裁剪",
+  "cropConfirm": "确认裁剪",
+  "cropNoImage": "没有图片，请返回重新选择",
+  "cropCannotReadImage": "无法读取该图片，请返回重新选择",
+  "cropCannotDecodeImage": "无法解码该图片，请返回重新选择",
+  "cropFailed": "裁剪失败：{error}",
+  "@cropFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "cropAspectSquare": "正方形",
+  "cropOrientationPortrait": "纵向",
+  "cropOrientationLandscape": "横向",
+  "cropToolAspect": "比例",
+  "cropToolRotate": "旋转",
+  "cropToolFlip": "翻转",
+  "cropToolReset": "重置",
+
+  "generateTitle": "设置",
+  "generateWidth": "宽 (豆)",
+  "generateHeight": "高 (豆)",
+  "generatePalette": "色卡",
+  "paletteColorCount": "{count} 色",
+  "@paletteColorCount": {
+    "placeholders": {
+      "count": { "type": "String" }
+    }
+  },
+  "generateModeLabel": "生成模式",
+  "generateModeStaged": "常规",
+  "generateModeGerstner": "照片",
+  "generateLimitColors": "限制颜色数",
+  "generateMaxColors": "最大颜色数",
+  "generateDespeckle": "去斑",
+  "generateDespeckleSubtitle": "清除孤立的杂色点",
+  "generateThresholdLabel": "阈值（豆）",
+  "generateThresholdHelper": "把不超过这么多豆的孤立同色小块，并入相邻主色",
+  "generateSubmit": "生成",
+  "generateNoCroppedImage": "没有裁剪后的图片，请返回重新选图",
+  "generateInvalidSize": "请输入有效的宽和高",
+  "generateSizeRange": "宽和高需在 1–1000 之间",
+  "generateMaxColorsRequired": "开了「限制颜色数」请填一个有效数值",
+  "generateDespeckleRequired": "开了「去斑」请填一个有效阈值",
+
+  "resultTitle": "结果",
+  "resultNoResult": "没有结果",
+  "resultSaveToAlbum": "保存到相册",
+  "resultCopySummary": "复制汇总",
+  "cellDetailCount": "{count, plural, other{{count} 颗}}",
+  "@cellDetailCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "cellDetailPosition": "位置：第 {row} 行 · 第 {col} 列",
+  "@cellDetailPosition": {
+    "placeholders": {
+      "row": { "type": "int" },
+      "col": { "type": "int" }
+    }
+  },
+  "resultHighlightSame": "高亮所有同色格子",
+  "resultCancelHighlight": "取消高亮同色",
+  "resultSaveTip": "建议保存到相册",
+  "resultSave": "保存",
+  "legendColorCount": "配色 · {count, plural, other{{count} 色}}",
+  "@legendColorCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "resultCopiedSummary": "已复制汇总",
+  "resultSavedToAlbum": "已保存到相册",
+  "albumPermissionDenied": "相册权限被拒绝，请在系统设置中允许访问",
+  "saveFailed": "保存失败: {error}",
+  "@saveFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  }
+}

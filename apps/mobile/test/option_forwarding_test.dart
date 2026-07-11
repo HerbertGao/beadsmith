@@ -15,6 +15,7 @@ import 'package:beadsmith/application/providers.dart';
 import 'package:beadsmith/infrastructure/bead_bridge.dart'
     show BeadPattern, GenerateOutput, GeneratorKind;
 import 'package:beadsmith/infrastructure/pattern_engine.dart';
+import 'package:beadsmith/l10n/app_localizations.dart';
 import 'package:beadsmith/presentation/generate_page.dart';
 import 'package:beadsmith/presentation/session_providers.dart';
 import 'package:flutter/cupertino.dart';
@@ -87,7 +88,12 @@ Future<ProviderContainer> _pumpGeneratePage(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('zh'), // finders below match the zh UI strings
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   return container;

@@ -8,6 +8,7 @@ import '../application/providers.dart';
 import '../infrastructure/album_service.dart' show AlbumAccessDenied;
 import '../infrastructure/bead_bridge.dart' show ColorStat, GenerateOutput;
 import '../infrastructure/palette_codec.dart' show PaletteColor, parsePalette;
+import '../l10n/app_localizations.dart';
 import 'bead_grid_view.dart';
 import 'session_providers.dart';
 import 'theme.dart';
@@ -28,9 +29,10 @@ class ResultPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final result = ref.watch(generateResultProvider);
     if (result == null) {
+      final l10n = AppLocalizations.of(context);
       return Scaffold(
-        appBar: AppBar(title: const Text('结果')),
-        body: const Center(child: Text('没有结果')),
+        appBar: AppBar(title: Text(l10n.resultTitle)),
+        body: Center(child: Text(l10n.resultNoResult)),
       );
     }
     // Parse the palette PINNED at generation time (design D6), synchronously —
@@ -54,6 +56,7 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return AppBar(
       title: Row(
         children: [
@@ -78,18 +81,18 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
               ),
             ),
           ),
-          const Text('结果'),
+          Text(l10n.resultTitle),
         ],
       ),
       actions: [
         IconButton(
           icon: const Icon(Icons.save_alt),
-          tooltip: '保存到相册',
+          tooltip: l10n.resultSaveToAlbum,
           onPressed: () => _saveToAlbum(context, ref, output.gridPng),
         ),
         IconButton(
           icon: const Icon(Icons.copy),
-          tooltip: '复制 summary',
+          tooltip: l10n.resultCopySummary,
           onPressed: () => _copySummary(context, ref, output.summary),
         ),
       ],
@@ -203,7 +206,7 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
                     ),
                   ),
                   Text(
-                    '$count 颗',
+                    AppLocalizations.of(sheetCtx).cellDetailCount(count),
                     style: monoTextStyle.copyWith(
                       color: Theme.of(sheetCtx).colorScheme.onSurface,
                     ),
@@ -212,7 +215,8 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
               ),
               const SizedBox(height: 8),
               Text(
-                '位置：第 ${row + 1} 行 · 第 ${col + 1} 列',
+                AppLocalizations.of(sheetCtx)
+                    .cellDetailPosition(row + 1, col + 1),
                 style: Theme.of(sheetCtx).textTheme.bodySmall,
               ),
               const SizedBox(height: 14),
@@ -224,7 +228,9 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
                 icon: Icon(
                   isHighlighted ? Icons.highlight_off : Icons.highlight,
                 ),
-                label: Text(isHighlighted ? '取消高亮同色' : '高亮所有同色格子'),
+                label: Text(isHighlighted
+                    ? AppLocalizations.of(sheetCtx).resultCancelHighlight
+                    : AppLocalizations.of(sheetCtx).resultHighlightSame),
               ),
             ],
           ),
@@ -369,7 +375,7 @@ class _SaveTip extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '建议保存到相册',
+                AppLocalizations.of(context).resultSaveTip,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onPrimaryContainer,
                 ),
@@ -382,7 +388,7 @@ class _SaveTip extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
-              child: const Text('保存'),
+              child: Text(AppLocalizations.of(context).resultSave),
             ),
             IconButton(
               onPressed: onDismiss,
@@ -465,7 +471,7 @@ class _LegendSheet extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '配色 · ${stats.length} 色',
+                      AppLocalizations.of(context).legendColorCount(stats.length),
                       style: theme.textTheme.titleMedium,
                     ),
                     const Spacer(),
@@ -583,9 +589,9 @@ void _showPreview(BuildContext context, Uint8List png) {
 void _copySummary(BuildContext context, WidgetRef ref, String summary) {
   ref.read(copySummaryProvider).call(summary).then((_) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('已复制 summary')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).resultCopiedSummary)),
+      );
     }
   });
 }
@@ -600,17 +606,20 @@ void _saveToAlbum(BuildContext context, WidgetRef ref, Uint8List png) {
       .call(png)
       .then((_) {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('已保存到相册')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).resultSavedToAlbum)),
+          );
         }
       })
       .catchError((e) {
         if (context.mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                e is AlbumAccessDenied ? '相册权限被拒绝，请在系统设置中允许访问' : '保存失败: $e',
+                e is AlbumAccessDenied
+                    ? l10n.albumPermissionDenied
+                    : l10n.saveFailed(e.toString()),
               ),
             ),
           );

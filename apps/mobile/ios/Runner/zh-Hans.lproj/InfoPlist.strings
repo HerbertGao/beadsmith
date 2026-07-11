@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "拼豆匠";
+"CFBundleName" = "拼豆匠";
+"NSPhotoLibraryAddUsageDescription" = "将生成的拼豆图案保存到相册";
+"NSPhotoLibraryUsageDescription" = "选择图片以生成拼豆图案";

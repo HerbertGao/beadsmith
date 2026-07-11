@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "Beadsmith";
+"CFBundleName" = "Beadsmith";
+"NSPhotoLibraryAddUsageDescription" = "Save the generated bead pattern to your photo library";
+"NSPhotoLibraryUsageDescription" = "Select a photo to generate a bead pattern";
