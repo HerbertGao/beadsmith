@@ -70,9 +70,41 @@ enum PaletteCmd {
         /// Palette JSON path.
         path: PathBuf,
     },
-    /// List available palettes (not implemented in M6).
+    /// List the built-in palettes (id, brand, color count).
     List,
 }
+
+/// Built-in palettes embedded at compile time (not an fs scan → self-contained
+/// binary). The set is drift-guarded by `builtin_palettes_match_source_dir`; array
+/// order (= `palette list` display order) mirrors the App's registry by hand, not test.
+const BUILTIN_PALETTES: &[(&str, &str)] = &[
+    ("mard", include_str!("../../../palettes/mard.json")),
+    ("artkal_s", include_str!("../../../palettes/artkal_s.json")),
+    ("artkal_a", include_str!("../../../palettes/artkal_a.json")),
+    ("artkal_c", include_str!("../../../palettes/artkal_c.json")),
+    ("artkal_m", include_str!("../../../palettes/artkal_m.json")),
+    ("artkal_r", include_str!("../../../palettes/artkal_r.json")),
+    ("hama", include_str!("../../../palettes/hama.json")),
+    (
+        "hama_maxi",
+        include_str!("../../../palettes/hama_maxi.json"),
+    ),
+    (
+        "hama_mini",
+        include_str!("../../../palettes/hama_mini.json"),
+    ),
+    ("perler", include_str!("../../../palettes/perler.json")),
+    (
+        "perler_caps",
+        include_str!("../../../palettes/perler_caps.json"),
+    ),
+    (
+        "perler_mini",
+        include_str!("../../../palettes/perler_mini.json"),
+    ),
+    ("nabbi", include_str!("../../../palettes/nabbi.json")),
+    ("yant", include_str!("../../../palettes/yant.json")),
+];
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -92,10 +124,7 @@ fn main() -> Result<()> {
         ),
         Command::Palette { command } => match command {
             PaletteCmd::Validate { path } => palette_validate(&path),
-            // ponytail: 桩成显式非零退出，不假绿、不 panic
-            PaletteCmd::List => {
-                anyhow::bail!("palette list: coming soon (not implemented in M6)")
-            }
+            PaletteCmd::List => palette_list(),
         },
         // ponytail: 桩成显式非零退出，不假绿、不 panic
         Command::Inspect { .. } => {
@@ -196,4 +225,72 @@ fn palette_validate(path: &Path) -> Result<()> {
     load_palette(&bytes).with_context(|| format!("invalid palette {path:?}"))?;
     println!("palette {path:?} is valid");
     Ok(())
+}
+
+fn palette_list() -> Result<()> {
+    for &(id, json) in BUILTIN_PALETTES {
+        let pal = load_palette(json.as_bytes())
+            .with_context(|| format!("built-in palette {id:?} failed to parse"))?;
+        // ponytail: {:<12}/{:<13} is min-width (longest id/brand today = 11); a
+        // ≥12-char future id misaligns but never truncates — widen the fields then.
+        println!("{:<12} {:<13} {} colors", id, pal.brand, pal.colors.len());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builtin_palettes_all_parse() {
+        // 14 is a deliberate tripwire (hand-bump when a palette lands); it also
+        // catches a duplicate id, which match_source_dir's BTreeSet would dedup away.
+        assert_eq!(BUILTIN_PALETTES.len(), 14);
+        for &(id, json) in BUILTIN_PALETTES {
+            let pal = load_palette(json.as_bytes())
+                .unwrap_or_else(|e| panic!("built-in palette {id} failed: {e}"));
+            assert!(
+                !pal.colors.is_empty(),
+                "built-in palette {id} has no colors"
+            );
+        }
+    }
+
+    /// Guards the built-in set against drifting from the source `palettes/` dir —
+    /// the CLI-side analogue of the App's `palette_assets_test` (design D8). Locks
+    /// identity, not just count: a palette added/removed on disk, or a mistyped id
+    /// (wrong `include_str!` basename), fails here instead of silently shipping.
+    #[test]
+    fn builtin_palettes_match_source_dir() {
+        use std::collections::BTreeSet;
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../palettes");
+        // Top-level *.json only — the `_unlicensed/` subdir (AGPL) and README.md
+        // are skipped by extension and must never be embedded.
+        let disk: BTreeSet<String> = fs::read_dir(dir)
+            .expect("read palettes dir")
+            .map(|e| e.expect("dir entry").path())
+            .filter(|p| p.extension().is_some_and(|x| x == "json"))
+            .map(|p| p.file_stem().unwrap().to_string_lossy().into_owned())
+            .collect();
+        let ids: BTreeSet<String> = BUILTIN_PALETTES
+            .iter()
+            .map(|&(id, _)| id.to_string())
+            .collect();
+        assert_eq!(
+            ids, disk,
+            "BUILTIN_PALETTES must equal palettes/*.json stems (add/remove in sync)"
+        );
+        // Each embedded JSON must be byte-equal to palettes/<id>.json — ties the id
+        // label to the file it claims (catches a wrong include_str! basename).
+        for &(id, json) in BUILTIN_PALETTES {
+            let path = format!("{dir}/{id}.json");
+            let on_disk = fs::read(&path).unwrap_or_else(|e| panic!("read {path}: {e}"));
+            assert_eq!(
+                json.as_bytes(),
+                on_disk.as_slice(),
+                "{id}: embedded JSON must match {path}"
+            );
+        }
+    }
 }

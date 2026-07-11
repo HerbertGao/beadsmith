@@ -153,20 +153,45 @@ fn cli_generate_and_palette_subcommands() {
         "palette validate <bad> stderr must surface the core reason (\"no colors\"); got: {bad_stderr:?}"
     );
 
-    // --- stub commands: exit non-zero (clap exit 1) + "coming soon" ---------
+    // --- palette list: prints the 14 built-in palettes ---------------------
     let list = Command::new(BIN)
         .args(["palette", "list"])
         .output()
         .expect("run palette list");
+    assert!(list.status.success(), "palette list must exit zero");
+    let list_stdout = String::from_utf8_lossy(&list.stdout);
+    assert_eq!(
+        list_stdout.lines().count(),
+        14,
+        "palette list must print one line per built-in palette; got: {list_stdout:?}"
+    );
+    // Every row must carry the full `<id> <brand> <N> colors` contract — guards a
+    // format regression that drops the count/brand field, which the line count and
+    // a single-sample check would miss.
+    for line in list_stdout.lines() {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        assert!(
+            tokens.len() >= 4
+                && *tokens.last().unwrap() == "colors"
+                && tokens[tokens.len() - 2].parse::<u32>().is_ok(),
+            "each row must be `<id> <brand> <N> colors`; got: {line:?}"
+        );
+    }
+    // Two full rows spot-checked (id + brand on one line), not just one.
     assert!(
-        !list.status.success(),
-        "palette list (stub) must exit non-zero"
+        list_stdout
+            .lines()
+            .any(|l| l.contains("mard") && l.contains("MARD")),
+        "mard's row must carry its id + brand; got: {list_stdout:?}"
     );
     assert!(
-        String::from_utf8_lossy(&list.stderr).contains("coming soon"),
-        "palette list stderr must contain \"coming soon\""
+        list_stdout
+            .lines()
+            .any(|l| l.contains("yant") && l.contains("Yant")),
+        "yant's row must carry its id + brand; got: {list_stdout:?}"
     );
 
+    // --- stub commands: exit non-zero (clap exit 1) + "coming soon" ---------
     let inspect = Command::new(BIN)
         .arg("inspect")
         .arg(work.join("whatever"))
