@@ -1,0 +1,9 @@
+arb-dir: lib/l10n
+template-arb-file: app_zh.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+# Pin zh as the first supported locale so a device whose preferred languages
+# match neither zh nor en falls back to Chinese (gen-l10n otherwise orders by
+# ARB filename, putting app_en before app_zh → wrong "default").
+preferred-supported-locales: [zh, en]

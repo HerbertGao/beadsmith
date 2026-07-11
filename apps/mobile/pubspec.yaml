@@ -31,6 +31,17 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Flutter's bundled localization delegates (Material/Cupertino/Widgets) for
+  # gen-l10n. SDK-provided, no version.
+  flutter_localizations:
+    sdk: flutter
+
+  # gen-l10n's generated app_localizations*.dart imports package:intl, so intl
+  # must be a DIRECT dependency (else flutter_lints' depend_on_referenced_packages
+  # fails analyze). NOT exact-pinned on purpose — flutter_localizations imposes a
+  # hard SDK constraint on intl; follow its resolution, don't blindly bump.
+  intl: any
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -76,11 +87,33 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  # Build-time launcher-icon generator (Android mipmaps + adaptive XML / iOS
+  # AppIcon.appiconset). Exact-pinned like the rest of the repo. Config section
+  # is added separately (group D / task 5.2).
+  flutter_launcher_icons: 0.14.4
+
+# Placeholder launcher icon config (group D / task 5.2). Source PNGs live in
+# assets/icon/ (build-time only — deliberately NOT under `flutter: assets`, so
+# the strict palette_assets_test isn't tripped). Regenerate the sources with
+# tool/gen_placeholder_icon.py, then `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  image_path: "assets/icon/app_icon.png"          # base full-bleed square → Android legacy mipmap-*/ic_launcher.png + iOS fallback
+  android: true
+  adaptive_icon_foreground: "assets/icon/ic_foreground.png"  # heart in center safe zone, transparent margin
+  adaptive_icon_background: "#FFF3E0"              # warm-cream ground (also shows through the bead holes)
+  ios: true
+  image_path_ios: "assets/icon/app_icon_ios.png"  # full-bleed, no alpha
+  remove_alpha_ios: true                          # App Store rejects alpha in iOS icons
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # Enables gen-l10n: `flutter pub get` / build runs codegen from l10n.yaml +
+  # lib/l10n/*.arb into lib/l10n/app_localizations.dart (AppLocalizations).
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

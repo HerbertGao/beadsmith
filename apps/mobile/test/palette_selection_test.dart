@@ -16,6 +16,7 @@ import 'package:beadsmith/infrastructure/bead_bridge.dart'
 import 'package:beadsmith/infrastructure/palette_codec.dart'
     show PaletteColor, parsePalette;
 import 'package:beadsmith/infrastructure/pattern_engine.dart';
+import 'package:beadsmith/l10n/app_localizations.dart';
 import 'package:beadsmith/presentation/bead_grid_view.dart';
 import 'package:beadsmith/presentation/generate_page.dart';
 import 'package:beadsmith/presentation/result_page.dart';
@@ -106,7 +107,12 @@ Future<ProviderContainer> _pump(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('zh'), // finders below match the zh UI strings
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ),
   );
   return container;

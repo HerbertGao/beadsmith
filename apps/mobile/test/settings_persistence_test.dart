@@ -10,6 +10,7 @@ import 'dart:typed_data';
 
 import 'package:beadsmith/application/generate_settings.dart';
 import 'package:beadsmith/infrastructure/bead_bridge.dart' show GeneratorKind;
+import 'package:beadsmith/l10n/app_localizations.dart';
 import 'package:beadsmith/presentation/generate_page.dart'
     show GeneratePage, lockedGridPair;
 import 'package:beadsmith/presentation/session_providers.dart';
@@ -37,7 +38,12 @@ Future<ProviderContainer> _pumpPage(
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: GeneratePage()),
+      child: MaterialApp(
+        locale: const Locale('zh'), // finders below match the zh UI strings
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const GeneratePage(),
+      ),
     ),
   );
   return container;

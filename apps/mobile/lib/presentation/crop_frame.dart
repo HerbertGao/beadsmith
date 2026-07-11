@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import 'crop_geometry.dart';
 import 'platform_segment.dart';
 
@@ -43,7 +44,9 @@ class _AspectChoice {
 }
 
 const _aspects = [
-  _AspectChoice('正方形', 1, 1),
+  // Square renders a localized label (cropAspectSquare) at build time, so this
+  // '1:1' is never shown — it just keeps the ratio-label field non-null/non-CJK.
+  _AspectChoice('1:1', 1, 1),
   _AspectChoice('2:3', 2, 3),
   _AspectChoice('3:4', 3, 4),
   _AspectChoice('4:5', 4, 5),
@@ -166,6 +169,7 @@ class _CropFrameState extends State<CropFrame> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) {
           final scheme = Theme.of(ctx).colorScheme;
+          final l10n = AppLocalizations.of(ctx);
           return SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -175,7 +179,10 @@ class _CropFrameState extends State<CropFrame> {
                   child: platformSegment<bool>(
                     context: ctx,
                     value: landscape,
-                    options: const [(false, '纵向'), (true, '横向')],
+                    options: [
+                      (false, l10n.cropOrientationPortrait),
+                      (true, l10n.cropOrientationLandscape),
+                    ],
                     onChanged: (v) => setSheet(() => landscape = v),
                   ),
                 ),
@@ -183,7 +190,7 @@ class _CropFrameState extends State<CropFrame> {
                   ListTile(
                     leading: Icon(Icons.crop, color: scheme.primary),
                     title: Text(a.w == a.h
-                        ? a.label
+                        ? l10n.cropAspectSquare
                         : (landscape ? '${a.h}:${a.w}' : a.label)),
                     onTap: () => Navigator.pop(
                         ctx, landscape ? a.landscape() : a.portrait()),
@@ -290,6 +297,7 @@ class _CropFrameState extends State<CropFrame> {
   }
 
   Widget _toolbar() {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -297,10 +305,10 @@ class _CropFrameState extends State<CropFrame> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _tool(Icons.aspect_ratio, '比例', _pickAspect),
-            _tool(Icons.rotate_90_degrees_cw, '旋转', _rotate),
-            _tool(Icons.flip, '翻转', _flip),
-            _tool(Icons.restart_alt, '重置', _reset),
+            _tool(Icons.aspect_ratio, l10n.cropToolAspect, _pickAspect),
+            _tool(Icons.rotate_90_degrees_cw, l10n.cropToolRotate, _rotate),
+            _tool(Icons.flip, l10n.cropToolFlip, _flip),
+            _tool(Icons.restart_alt, l10n.cropToolReset, _reset),
           ],
         ),
       ),

@@ -7,6 +7,7 @@ import '../application/generate_settings.dart';
 import '../application/providers.dart';
 import '../infrastructure/bead_bridge.dart' show GeneratorKind;
 import '../infrastructure/palette_registry.dart';
+import '../l10n/app_localizations.dart';
 import 'platform_segment.dart';
 import 'session_providers.dart';
 
@@ -179,32 +180,33 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   }
 
   Future<void> _generate() async {
+    final l10n = AppLocalizations.of(context);
     final cropped = ref.read(croppedImageProvider);
     if (cropped == null) {
-      setState(() => _error = '没有裁剪后的图片，请返回重新选图');
+      setState(() => _error = l10n.generateNoCroppedImage);
       return;
     }
     final width = int.tryParse(_width.text.trim());
     final height = int.tryParse(_height.text.trim());
     if (width == null || height == null) {
-      setState(() => _error = '请输入有效的宽和高');
+      setState(() => _error = l10n.generateInvalidSize);
       return;
     }
     // ponytail: cap at 1000 beads/side — bead-core has no upper bound, so a huge
     // value eager-allocs w·h·3 bytes in image::resize → uncatchable alloc abort.
     if (width < 1 || width > 1000 || height < 1 || height > 1000) {
-      setState(() => _error = '宽和高需在 1–1000 之间');
+      setState(() => _error = l10n.generateSizeRange);
       return;
     }
     final settings = ref.read(generateSettingsProvider);
     // A toggled-on option with an empty/invalid field would silently send null
     // (= off) with no feedback — reject it. `0` is valid (reaches the engine).
     if (settings.limitColors && _readU32OrNull(_maxColors.text) == null) {
-      setState(() => _error = '开了「限制颜色数」请填一个有效数值');
+      setState(() => _error = l10n.generateMaxColorsRequired);
       return;
     }
     if (settings.despeckleOn && _readU32OrNull(_despeckle.text) == null) {
-      setState(() => _error = '开了「去斑」请填一个有效阈值');
+      setState(() => _error = l10n.generateDespeckleRequired);
       return;
     }
     setState(() {
@@ -248,22 +250,23 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
         .titleSmall
         ?.copyWith(color: scheme.onSurface);
     final notifier = ref.read(generateSettingsProvider.notifier);
+    final l10n = AppLocalizations.of(context);
     return [
-      Text('生成模式', style: labelStyle),
+      Text(l10n.generateModeLabel, style: labelStyle),
       const SizedBox(height: 8),
       platformSegment<GeneratorKind>(
         context: context,
         value: settings.generator,
-        options: const [
-          (GeneratorKind.staged, '常规'),
-          (GeneratorKind.gerstner, '照片'),
+        options: [
+          (GeneratorKind.staged, l10n.generateModeStaged),
+          (GeneratorKind.gerstner, l10n.generateModeGerstner),
         ],
         onChanged: notifier.setGenerator,
       ),
       const SizedBox(height: 16),
       SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
-        title: const Text('限制颜色数'),
+        title: Text(l10n.generateLimitColors),
         activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
         value: settings.limitColors,
         onChanged: notifier.setLimitColors,
@@ -273,7 +276,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
           controller: _maxColors,
           keyboardType: TextInputType.number,
           inputFormatters: [_digitsOnly],
-          decoration: const InputDecoration(labelText: '最大颜色数'),
+          decoration: InputDecoration(labelText: l10n.generateMaxColors),
           // Persist a valid value; an empty field is transient (persisted value
           // is non-null) and left alone so the "toggled-on + empty ⇒ reject"
           // guard still works at generate time.
@@ -285,8 +288,8 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
       const SizedBox(height: 16),
       SwitchListTile.adaptive(
         contentPadding: EdgeInsets.zero,
-        title: const Text('去斑'),
-        subtitle: const Text('清除孤立的杂色点'),
+        title: Text(l10n.generateDespeckle),
+        subtitle: Text(l10n.generateDespeckleSubtitle),
         activeTrackColor: scheme.primary, // brand pill on iOS; M3 default on Android
         value: settings.despeckleOn,
         onChanged: notifier.setDespeckleOn,
@@ -296,9 +299,9 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
           controller: _despeckle,
           keyboardType: TextInputType.number,
           inputFormatters: [_digitsOnly],
-          decoration: const InputDecoration(
-            labelText: '阈值（豆）',
-            helperText: '把不超过这么多豆的孤立同色小块，并入相邻主色',
+          decoration: InputDecoration(
+            labelText: l10n.generateThresholdLabel,
+            helperText: l10n.generateThresholdHelper,
           ),
           onChanged: (v) {
             final n = _readU32OrNull(v);
@@ -313,7 +316,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   Widget _paletteRow(BuildContext context, GenerateSettings settings) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: const Text('色卡'),
+      title: Text(AppLocalizations.of(context).generatePalette),
       subtitle: Text(paletteEntryOrDefault(settings.paletteId).brand),
       trailing: const Icon(Icons.chevron_right),
       onTap: _showPaletteSheet,
@@ -339,7 +342,8 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                   ListTile(
                     title: Text(e.brand),
                     // "N 色" lazily parsed; parse failure / not-yet-loaded → "—".
-                    subtitle: Text('${counts.asData?.value[e.id] ?? '—'} 色'),
+                    subtitle: Text(AppLocalizations.of(ctx)
+                        .paletteColorCount('${counts.asData?.value[e.id] ?? '—'}')),
                     trailing: e.id == selectedId
                         ? Icon(Icons.check,
                             color: Theme.of(ctx).colorScheme.primary)
@@ -362,16 +366,17 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(generateSettingsProvider);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(title: Text(l10n.generateTitle)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sizeStepper(_width, '宽 (豆)', _onWidthChanged),
+            _sizeStepper(_width, l10n.generateWidth, _onWidthChanged),
             const SizedBox(height: 12),
-            _sizeStepper(_height, '高 (豆)', _onHeightChanged),
+            _sizeStepper(_height, l10n.generateHeight, _onHeightChanged),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -404,7 +409,7 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
                       width: 20,
                       child: CircularProgressIndicator.adaptive(strokeWidth: 2),
                     )
-                  : const Text('生成'),
+                  : Text(l10n.generateSubmit),
             ),
           ],
         ),

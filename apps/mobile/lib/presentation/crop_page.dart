@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 
+import '../l10n/app_localizations.dart';
 import 'crop_frame.dart';
 import 'crop_geometry.dart';
 import 'session_providers.dart';
@@ -43,7 +44,8 @@ class _CropPageState extends ConsumerState<CropPage> {
       frame.image.dispose();
       if (mounted) setState(() => _srcSize = Size(w.toDouble(), h.toDouble()));
     } catch (_) {
-      if (mounted) setState(() => _error = '无法读取该图片，请返回重新选择');
+      if (!mounted) return;
+      setState(() => _error = AppLocalizations.of(context).cropCannotReadImage);
     }
   }
 
@@ -53,7 +55,7 @@ class _CropPageState extends ConsumerState<CropPage> {
     try {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) {
-        _showError('无法解码该图片，请返回重新选择');
+        _showError(AppLocalizations.of(context).cropCannotDecodeImage);
         return;
       }
       // Orient first (rotate THEN flip — pinned order), then crop in the
@@ -86,7 +88,7 @@ class _CropPageState extends ConsumerState<CropPage> {
       ref.read(cropAspectProvider.notifier).set(_state.aspect);
       context.push('/generate');
     } catch (e) {
-      _showError('裁剪失败：$e');
+      _showError(AppLocalizations.of(context).cropFailed(e.toString()));
     }
   }
 
@@ -99,19 +101,20 @@ class _CropPageState extends ConsumerState<CropPage> {
   Widget build(BuildContext context) {
     final bytes = ref.watch(pickedImageProvider);
     final ready = bytes != null && _srcSize != null && _error == null;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('裁剪'),
+        title: Text(l10n.cropTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
-            tooltip: '确认裁剪',
+            tooltip: l10n.cropConfirm,
             onPressed: ready ? _confirm : null,
           ),
         ],
       ),
       body: bytes == null
-          ? const Center(child: Text('没有图片，请返回重新选择'))
+          ? Center(child: Text(l10n.cropNoImage))
           : _error != null
               ? Center(child: Text(_error!))
               : _srcSize == null

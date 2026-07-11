@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'application/generate_settings.dart' show sharedPreferencesProvider;
 import 'infrastructure/bead_ffi_loader.dart';
+import 'l10n/app_localizations.dart';
 import 'presentation/app_router.dart';
 import 'presentation/theme.dart';
 
@@ -13,6 +14,7 @@ Future<void> main() async {
   try {
     await initBeadFfi();
   } catch (e) {
+    // ponytail: pre-l10n 崩溃兜底屏，AppLocalizations 未就绪，不纳入本地化（设计 D3）
     runApp(MaterialApp(
       home: Scaffold(body: Center(child: Text('引擎加载失败：$e'))),
     ));
@@ -28,6 +30,7 @@ Future<void> main() async {
     // Degrade like the FFI path: a startup prefs failure shows a readable screen
     // instead of an unhandled crash. (The settings Notifier needs a ready prefs
     // instance to build, so we can't silently proceed without it.)
+    // ponytail: pre-l10n 崩溃兜底屏，AppLocalizations 未就绪，不纳入本地化（设计 D3）
     runApp(MaterialApp(
       home: Scaffold(body: Center(child: Text('设置加载失败：$e'))),
     ));
@@ -45,7 +48,9 @@ class BeadsmithApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Beadsmith',
+      onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appTitle,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: ThemeMode.system,

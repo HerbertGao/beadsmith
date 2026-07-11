@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../l10n/app_localizations.dart';
 import 'session_providers.dart';
 
 /// Step 1: pick an image (gallery) → route to CropPage.
@@ -13,8 +14,9 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Beadsmith')),
+      appBar: AppBar(title: Text(l10n.appTitle)),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -30,17 +32,17 @@ class HomePage extends ConsumerWidget {
                 child: Icon(Icons.grid_on, size: 56, color: scheme.primary),
               ),
               const SizedBox(height: 24),
-              Text('拼豆图纸生成器', style: theme.textTheme.headlineSmall),
+              Text(l10n.homeHeadline, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                '选一张图片，裁剪后生成拼豆图纸',
+                l10n.homeSubtitle,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: 32),
               FilledButton.icon(
                 icon: const Icon(Icons.photo_library),
-                label: const Text('选择图片'),
+                label: Text(l10n.homePickImage),
                 onPressed: () => _pick(context, ref),
               ),
             ],
