@@ -257,6 +257,16 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
 - **中文定名 + 图标 + i18n** — 起正式中文 App 名（当前 `beadsmith` 是占位）、设计
   应用图标（当前无正式 icon）、把硬编码中文文案抽成 i18n（flutter gen-l10n /
   intl），至少中英双语。
+  - **✅ 已完成（2026-07-11，PR #25 已合并，变更 `app-brand-i18n` 已归档）：** 定名
+    **「拼豆匠」全本地化随系统语言**（Android `values/`+`values-en/`；iOS `en/zh-Hans.lproj`
+    `InfoPlist.strings` + `CFBundleLocalizations` + **`CFBundleDevelopmentRegion` 直写 `zh-Hans`**
+    去 `$(DEVELOPMENT_LANGUAGE)` 宏歧义 + pbxproj `PBXVariantGroup`/`knownRegions` 注册；不动
+    包名/applicationId/bundleId）。i18n 用官方 **gen-l10n**（ARB，中英双语，默认中文）：抽 5
+    presentation 文件约 52 条文案 + `intl` 直依赖；回落语义（三端一致）**含 en→英文、无 zh 无
+    en→中文**（`preferred-supported-locales:[zh,en]`）；iOS 相册权限文案经 `InfoPlist.strings`。
+    图标为**占位**（程序生成「拼豆心」+ `flutter_launcher_icons` 自适应双层/iOS 无 alpha），另出
+    `assets/icon/ICON_PROMPT.md`（文生图 prompt 供挑正式图标）。测试:i18n 覆盖自检 + 语言切换/
+    回落。**上架前手动尾巴：** iOS 真机切语言验收 + 换正式图标。
 - **接入 Google Ads** — 移动端接 AdMob（banner / 插屏 / 激励，形式待定）变现。
 - **上架 App Store + Google Play** — M9 一直 defer 的 release engineering：签名
   （Android keystore，当前 `app/build.gradle.kts` 用 debug key 占位有 TODO）、
@@ -277,8 +287,13 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
   - **进度（2026-07-06，PR #23 已合并，App 侧）：** App「选色卡」能力已落地——设置页新增
     「色卡」行 → Material 底部弹窗从 14 个内置色卡选择、默认 MARD；`shared_preferences`
     持久化（色卡/生成模式/限色/去斑/宽）；结果钉住生成时色卡（改色卡不污染已有结果）。
-    引擎/CLI/FFI 零改动。变更 `app-palette-selection` 已归档。**剩余：** CLI `palette list`
-    实现（引擎侧独立事项）仍待做。
+    引擎/CLI/FFI 零改动。变更 `app-palette-selection` 已归档。
+  - **进度（2026-07-11，PR #24 已合并，CLI）：** `palette list` **✅ 已实现**——用 `include_str!`
+    编译期内置 14 份色卡（对齐 App `palette_registry.dart`，排除 `_unlicensed/`），每份一行
+    `id / brand / 色数`、退出 0；brand/色数由 `load_palette` 解析（不硬编码）；新增
+    `builtin_palettes_match_source_dir` 防漂移测试（内置集 == 源 `palettes/*.json` 双向 + 逐份
+    字节相等）。变更 `cli-palette-list` 已归档。**引擎侧 palette 待办清零**（④ 国产牌仍 AGPL 阻断
+    待实测）。
 
 > 上架（第 4 条）依赖收藏 + 定名/图标的完成度——那是「像成品」的最低要求。
 
