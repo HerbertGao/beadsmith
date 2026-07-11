@@ -23,6 +23,6 @@
 
 ## 3. 归档时同步主规范（未实现子命令需求已收窄，目的段须手改）
 
-- [ ] 3.1 归档 `cli-palette-list` 后，手动更新主 spec `openspec/specs/cli/spec.md` 的**目的段**
+- [x] 3.1 归档 `cli-palette-list` 后，手动更新主 spec `openspec/specs/cli/spec.md` 的**目的段**
   （约第 6-7 行）：`palette list` 由「未实现桩」改为「列出内置色卡」，仅 `inspect` 保持桩——OpenSpec
   的需求增量合并**不覆盖目的散文段**，不手改会残留自相矛盾描述（Codex/RC round-1 finding）
