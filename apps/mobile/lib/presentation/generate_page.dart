@@ -308,6 +308,37 @@ class _GeneratePageState extends ConsumerState<GeneratePage> {
             if (n != null) notifier.setDespeckle(n);
           },
         ),
+      const SizedBox(height: 16),
+      // Border-ring default `k` (design D8): a small 0..kMaxBorderRings integer,
+      // so a −/+ stepper on the value is enough (no text field). Buttons gate the
+      // range; the persisted read also clamps as a safety net.
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(l10n.borderRingsLabel),
+        subtitle: Text(l10n.borderRingsHelper),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton.outlined(
+              onPressed: settings.borderRings > 0
+                  ? () => notifier.setBorderRings(settings.borderRings - 1)
+                  : null,
+              icon: const Icon(Icons.remove),
+            ),
+            SizedBox(
+              width: 32,
+              child: Text('${settings.borderRings}',
+                  textAlign: TextAlign.center),
+            ),
+            IconButton.outlined(
+              onPressed: settings.borderRings < kMaxBorderRings
+                  ? () => notifier.setBorderRings(settings.borderRings + 1)
+                  : null,
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+      ),
     ];
   }
 

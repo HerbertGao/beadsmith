@@ -284,6 +284,24 @@ abstract class AppLocalizations {
   /// **'把不超过这么多豆的孤立同色小块，并入相邻主色'**
   String get generateThresholdHelper;
 
+  /// No description provided for @borderRingsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'边框圈'**
+  String get borderRingsLabel;
+
+  /// No description provided for @borderRingsHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'对齐实体拼豆板的留白圈数（默认值）'**
+  String get borderRingsHelper;
+
+  /// No description provided for @borderRingsResultHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次预览的边框圈数，不改默认'**
+  String get borderRingsResultHint;
+
   /// No description provided for @generateSubmit.
   ///
   /// In zh, this message translates to:
