@@ -295,6 +295,20 @@ mono face. Tokens: accent `#6C4BF4`, secondary `#12A594`, ink `#1C1830`, ground
     字节相等）。变更 `cli-palette-list` 已归档。**引擎侧 palette 待办清零**（④ 国产牌仍 AGPL 阻断
     待实测）。
 
+- **预览/保存图对齐实体拼豆板（App 侧图纸打磨，M10 期间追加）** — 让 App 屏上图纸与用户
+  手里的实体刻度拼豆板对齐,补足「像成品」的 UX 缺口。
+  - **✅ 已完成（2026-07-12，PR #26 已合并，变更 `pegboard-grid-margin` 已归档）：** App 从
+    `BeadPattern.cells` **自渲染预览 + 保存图**（引擎 `gridPng` 降为开发辅助、**引擎零改**），加
+    **每 10 格加粗分割线 + 1-based 内容刻度**;**可配边框圈 k**（默认 0、`0..8`;设置页默认值持久化
+    \+ 结果页实时改，经 `NotifierProvider.autoDispose.family` 键控结果 identity 防跨结果泄漏）对齐实体
+    板边框留白，边框空留白/不进 `BeadPattern`/不入统计/不编号/点边框 no-op。**两层几何** = 刻度 margin
+    \+ 板面 `(W+2k)×(H+2k)`，预览/命中/存图三触点 letterbox 读含-margin 的 `canvasAspect`（非
+    `(W+2k)/(H+2k)`）。「保存到相册」改 **CPU 光栅（`image` 包）** 出图（禁 `toImage`）+ 像素预算
+    （最长边 hard-clamp 4096）。预览与存图共用 `BeadGridLayout` 单一几何源 + 防漂移测试（尺度无关产出
+    一致 + CPU PNG byte golden）。经 **2 轮对抗 review** 收敛（APPROVE-DEGRADED）;15/15 任务、`flutter
+    test` 75 绿、`crates/`+`tests/golden` 零改。**上架前手动尾巴：** 大图存图同步 CPU 光栅可能瞬冻 UI
+    （spec 不-OOM 已由 hard-clamp 保证，`compute`/进度留 `ponytail:` 升级路径），大图卡顿时再迁 isolate。
+
 > 上架（第 4 条）依赖收藏 + 定名/图标的完成度——那是「像成品」的最低要求。
 
 ---
