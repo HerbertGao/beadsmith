@@ -110,6 +110,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Merge isolated same-color blobs of at most this many beads into the neighboring main color';
 
   @override
+  String get borderRingsLabel => 'Border rings';
+
+  @override
+  String get borderRingsHelper =>
+      'Blank rings to align with a physical pegboard (default)';
+
+  @override
+  String get borderRingsResultHint =>
+      'Border rings for this preview only (default unchanged)';
+
+  @override
   String get generateSubmit => 'Generate';
 
   @override

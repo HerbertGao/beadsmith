@@ -4,6 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../infrastructure/bead_bridge.dart' show GeneratorKind;
 import '../infrastructure/palette_registry.dart' show kDefaultPaletteId;
 
+/// Hard upper bound for the pegboard border-ring count `k` (design D3). Shared by
+/// the persisted-default clamp here and the UI steppers so there is one source of
+/// truth for the ceiling.
+const int kMaxBorderRings = 8;
+
 /// Cross-launch settings-page config (design D4). A plain value object; the
 /// [GenerateSettingsNotifier] owns persistence.
 ///
@@ -25,6 +30,7 @@ class GenerateSettings {
     required this.despeckleOn,
     required this.despeckle,
     required this.width,
+    required this.borderRings,
   });
 
   final String paletteId;
@@ -34,6 +40,12 @@ class GenerateSettings {
   final bool despeckleOn;
   final int despeckle;
   final int width;
+
+  /// Default pegboard border-ring count `k` — blank whitespace rings around the
+  /// content for aligning to a physical board (design D3/D8). Persisted; `0` =
+  /// off (opt-in). Read clamps stale values to `0..kMaxBorderRings`. The
+  /// ResultPage carries a transient `k` that is NOT written back here.
+  final int borderRings;
 
   /// First-launch defaults (spec): MARD / staged / limit off / despeckle off /
   /// width 100. The 24 / 2 are the field values shown when a toggle is first
@@ -47,6 +59,7 @@ class GenerateSettings {
     despeckleOn: false,
     despeckle: 2,
     width: 100,
+    borderRings: 0,
   );
 
   GenerateSettings copyWith({
@@ -57,6 +70,7 @@ class GenerateSettings {
     bool? despeckleOn,
     int? despeckle,
     int? width,
+    int? borderRings,
   }) {
     return GenerateSettings(
       paletteId: paletteId ?? this.paletteId,
@@ -66,6 +80,7 @@ class GenerateSettings {
       despeckleOn: despeckleOn ?? this.despeckleOn,
       despeckle: despeckle ?? this.despeckle,
       width: width ?? this.width,
+      borderRings: borderRings ?? this.borderRings,
     );
   }
 
@@ -78,11 +93,12 @@ class GenerateSettings {
       other.maxColors == maxColors &&
       other.despeckleOn == despeckleOn &&
       other.despeckle == despeckle &&
-      other.width == width;
+      other.width == width &&
+      other.borderRings == borderRings;
 
   @override
   int get hashCode => Object.hash(paletteId, generator, limitColors, maxColors,
-      despeckleOn, despeckle, width);
+      despeckleOn, despeckle, width, borderRings);
 }
 
 /// Injected `SharedPreferences`. `main()` pre-loads `getInstance()` and overrides
@@ -104,6 +120,7 @@ const String _kMaxColors = 'settings.maxColors';
 const String _kDespeckleOn = 'settings.despeckleOn';
 const String _kDespeckle = 'settings.despeckle';
 const String _kWidth = 'settings.width';
+const String _kBorderRings = 'settings.borderRings';
 
 /// Persisted settings-page state. Reads synchronously from the injected prefs in
 /// [build]; every setter writes back immediately ("any field change ⇒ write").
@@ -125,6 +142,8 @@ class GenerateSettingsNotifier extends Notifier<GenerateSettings> {
       despeckleOn: p.getBool(_kDespeckleOn) ?? d.despeckleOn,
       despeckle: p.getInt(_kDespeckle) ?? d.despeckle,
       width: p.getInt(_kWidth) ?? d.width,
+      // Clamp a stale persisted value that predates / exceeds the hard cap.
+      borderRings: (p.getInt(_kBorderRings) ?? 0).clamp(0, kMaxBorderRings),
     );
   }
 
@@ -147,6 +166,10 @@ class GenerateSettingsNotifier extends Notifier<GenerateSettings> {
   /// or re-derive-on-entry must NOT call this (design D5 write-back rule).
   void setWidth(int w) => _apply(state.copyWith(width: w));
 
+  /// Persist the default border-ring count `k` (design D8). The UI stepper gates
+  /// `0..kMaxBorderRings`; the read-side clamp is the safety net for stale values.
+  void setBorderRings(int k) => _apply(state.copyWith(borderRings: k));
+
   void _apply(GenerateSettings next) {
     if (next == state) return;
     state = next;
@@ -162,6 +185,7 @@ class GenerateSettingsNotifier extends Notifier<GenerateSettings> {
     p.setBool(_kDespeckleOn, s.despeckleOn);
     p.setInt(_kDespeckle, s.despeckle);
     p.setInt(_kWidth, s.width);
+    p.setInt(_kBorderRings, s.borderRings);
   }
 }
 

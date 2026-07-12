@@ -188,6 +188,116 @@ void main() {
     expect(tappedCol, isNotNull);
   });
 
+  // ── 5.2 ③④ content tap → 1-based detail; border tap → no-op ──
+  // W=H=4 (<10 → no tick margin) + k=1: the whole canvas is a 6×6 board that
+  // fills a square 300×300 box exactly, cellSize=50. Content is the inner 4×4
+  // ring-in-1; the outer ring is empty border. Clean, exact hit-test math.
+  testWidgets('5.2③④ tap content → 0-based (+1=1-based); tap border ring → no-op',
+      (tester) async {
+    int? row, col, idx;
+    int callbacks = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 300,
+            height: 300,
+            child: BeadGridView(
+              cells: List<int>.generate(4 * 4, (i) => i % 3),
+              width: 4,
+              height: 4,
+              borderRings: 1,
+              palette: [
+                for (var i = 0; i < 3; i++)
+                  PaletteColor(
+                      code: 'S$i', name: 'C$i', rgb: Color(0xFF000000 | i)),
+              ],
+              onCellTap: (r, c, i) {
+                row = r;
+                col = c;
+                idx = i;
+                callbacks++;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final topLeft = tester.getTopLeft(find.byType(BeadGridView));
+
+    // Content cell (0,0) sits at board cell (1,1) → center at (50+25, 50+25).
+    await tester.tapAt(topLeft + const Offset(75, 75));
+    expect(callbacks, 1, reason: 'content tap fires detail');
+    expect(row, 0);
+    expect(col, 0);
+    expect(idx, 0);
+    // The UI shows 1-based: (row+1, col+1) = (1, 1).
+    expect(row! + 1, 1);
+    expect(col! + 1, 1);
+
+    // Content cell (3,3) = board (4,4) → center (225,225). Max 1-based = (4,4).
+    await tester.tapAt(topLeft + const Offset(225, 225));
+    expect(callbacks, 2);
+    expect(row! + 1, 4);
+    expect(col! + 1, 4);
+
+    // Border ring taps must NOT fire the detail callback.
+    await tester.tapAt(topLeft + const Offset(25, 25)); // top-left border corner
+    await tester.tapAt(topLeft + const Offset(125, 25)); // top-edge border
+    await tester.tapAt(topLeft + const Offset(275, 275)); // bottom-right border
+    expect(callbacks, 2, reason: 'taps in the k=1 border ring are no-ops');
+  });
+
+  // ── 5.3 non-square W≠H + k>0 widget hit-test (k offset stripped) ──
+  // W=6,H=4 (both <10 → no margin) + k=1 → 8×6 board, aspect 4:3. A 320×240 box
+  // (also 4:3) fits it exactly, cellSize=40, cells square. Content is inner 6×4.
+  testWidgets('5.3 non-square + k>0: content tap maps correctly, border no-op',
+      (tester) async {
+    int? row, col;
+    int callbacks = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 320,
+            height: 240,
+            child: BeadGridView(
+              cells: List<int>.generate(6 * 4, (i) => i % 2),
+              width: 6,
+              height: 4,
+              borderRings: 1,
+              palette: [
+                for (var i = 0; i < 2; i++)
+                  PaletteColor(
+                      code: 'S$i', name: 'C$i', rgb: Color(0xFF000000 | i)),
+              ],
+              onCellTap: (r, c, _) {
+                row = r;
+                col = c;
+                callbacks++;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final topLeft = tester.getTopLeft(find.byType(BeadGridView));
+    // Content (2,3): board cell (3,4) → center ((1+3+0.5)*40, (1+2+0.5)*40)
+    // = (180, 140). Hit-test must strip the k=1 ring to land on (2,3).
+    await tester.tapAt(topLeft + const Offset(180, 140));
+    expect(callbacks, 1);
+    expect(row, 2);
+    expect(col, 3);
+    expect(row! + 1, inInclusiveRange(1, 4)); // 1-based within 1..H
+    expect(col! + 1, inInclusiveRange(1, 6)); // 1-based within 1..W
+
+    // A tap in the surrounding border ring is a no-op.
+    await tester.tapAt(topLeft + const Offset(20, 20));
+    expect(callbacks, 1);
+  });
+
   testWidgets('builds without error for a larger grid', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

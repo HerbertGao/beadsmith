@@ -69,6 +69,7 @@ void main() {
     n.setDespeckleOn(true);
     n.setDespeckle(4);
     n.setWidth(64);
+    n.setBorderRings(3);
     c1.dispose();
 
     // "Kill & reopen": a fresh container reading the SAME persisted store. The
@@ -86,6 +87,20 @@ void main() {
     expect(s.despeckleOn, isTrue);
     expect(s.despeckle, 4);
     expect(s.width, 64);
+    expect(s.borderRings, 3); // anti-vacuous round-trip: written to c1, read from c2
+  });
+
+  test('6.2 stale over-limit borderRings clamps to kMaxBorderRings on read',
+      () async {
+    // A persisted value above the hard cap (e.g. predating a lower cap) must be
+    // clamped by build()'s `.clamp(0, kMaxBorderRings)`, not read back verbatim.
+    SharedPreferences.setMockInitialValues({'settings.borderRings': 99});
+    final prefs = await SharedPreferences.getInstance();
+    final c = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+    addTearDown(c.dispose);
+
+    expect(c.read(generateSettingsProvider).borderRings, kMaxBorderRings);
   });
 
   test('6.2 first launch (no persisted values) falls back to defaults',
@@ -103,6 +118,7 @@ void main() {
     expect(s.limitColors, isFalse);
     expect(s.despeckleOn, isFalse);
     expect(s.width, 100);
+    expect(s.borderRings, 0);
   });
 
   testWidgets('6.2 height is re-derived from persisted width at the current aspect',

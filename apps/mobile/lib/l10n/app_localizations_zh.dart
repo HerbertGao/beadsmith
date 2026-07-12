@@ -106,6 +106,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generateThresholdHelper => '把不超过这么多豆的孤立同色小块，并入相邻主色';
 
   @override
+  String get borderRingsLabel => '边框圈';
+
+  @override
+  String get borderRingsHelper => '对齐实体拼豆板的留白圈数（默认值）';
+
+  @override
+  String get borderRingsResultHint => '本次预览的边框圈数，不改默认';
+
+  @override
   String get generateSubmit => '生成';
 
   @override

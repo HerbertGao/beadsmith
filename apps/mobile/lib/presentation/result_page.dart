@@ -4,14 +4,48 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../application/generate_settings.dart'
+    show generateSettingsProvider, kMaxBorderRings;
 import '../application/providers.dart';
 import '../infrastructure/album_service.dart' show AlbumAccessDenied;
 import '../infrastructure/bead_bridge.dart' show ColorStat, GenerateOutput;
 import '../infrastructure/palette_codec.dart' show PaletteColor, parsePalette;
 import '../l10n/app_localizations.dart';
+import 'bead_grid_layout.dart';
+import 'bead_grid_save.dart' show renderPatternPng;
 import 'bead_grid_view.dart';
 import 'session_providers.dart';
 import 'theme.dart';
+
+/// Transient border-ring count `k` for the CURRENT result. A `.family` keyed by
+/// the [GenerateResult] identity: each generation is a fresh instance (it has no
+/// `==` override), so a new result re-seeds `k` from the persisted default in
+/// [_ResultBorderRings.build] instead of inheriting the k tweaked on the previous
+/// result — and `autoDispose` reclaims it when the ResultPage pops. The seed
+/// lives in `build`, so the sibling AppBar and body read the SAME seeded value on
+/// first read (a plain provider seeded in initState would race). NOT written back
+/// to the persisted default.
+///
+/// (Riverpod 3 makes `StateProvider` legacy; this codebase is all-`Notifier`, so
+/// the equivalent family Notifier is used — same autoDispose/family/seed
+/// semantics the design mandates, without a legacy import.)
+final resultBorderRingsProvider = NotifierProvider.autoDispose
+    .family<_ResultBorderRings, int, GenerateResult>(
+  (result) => _ResultBorderRings(),
+);
+
+class _ResultBorderRings extends Notifier<int> {
+  @override
+  int build() =>
+      // One-time seed from the default (ref.read, NOT watch): k here is a
+      // transient per-result display state, so a later change to the default
+      // must not reset the user's in-result adjustment. Re-seeding for a NEW
+      // result is handled by the `.family` key (a fresh GenerateResult → a
+      // fresh Notifier → build() runs again), not by a reactive dependency.
+      ref.read(generateSettingsProvider).borderRings;
+
+  void set(int k) => state = k;
+}
 
 /// Step 4 (redesign, qiaomu-design B): the grid is the primary view — a
 /// full-screen zoomable bead grid the user can pan/pinch/tap to identify
@@ -41,15 +75,16 @@ class ResultPage extends ConsumerWidget {
     // switched palettes after generating.
     final palette = parsePalette(result.paletteJson);
     return Scaffold(
-      appBar: _ResultAppBar(output: result.output),
-      body: _ResultBody(output: result.output, palette: palette),
+      appBar: _ResultAppBar(result: result, palette: palette),
+      body: _ResultBody(result: result, palette: palette),
     );
   }
 }
 
 class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _ResultAppBar({required this.output});
-  final GenerateOutput output;
+  const _ResultAppBar({required this.result, required this.palette});
+  final GenerateResult result;
+  final List<PaletteColor> palette;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -57,6 +92,8 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final output = result.output;
+    final k = ref.watch(resultBorderRingsProvider(result));
     return AppBar(
       title: Row(
         children: [
@@ -88,7 +125,7 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
         IconButton(
           icon: const Icon(Icons.save_alt),
           tooltip: l10n.resultSaveToAlbum,
-          onPressed: () => _saveToAlbum(context, ref, output.gridPng),
+          onPressed: () => _saveGridToAlbum(context, ref, output, palette, k),
         ),
         IconButton(
           icon: const Icon(Icons.copy),
@@ -101,8 +138,8 @@ class _ResultAppBar extends ConsumerWidget implements PreferredSizeWidget {
 }
 
 class _ResultBody extends ConsumerStatefulWidget {
-  const _ResultBody({required this.output, required this.palette});
-  final GenerateOutput output;
+  const _ResultBody({required this.result, required this.palette});
+  final GenerateResult result;
   final List<PaletteColor> palette;
 
   @override
@@ -243,7 +280,7 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
   int _countFor(int paletteIndex) {
     if (paletteIndex >= widget.palette.length) return 0;
     final code = widget.palette[paletteIndex].code;
-    for (final s in widget.output.stats) {
+    for (final s in widget.result.output.stats) {
       if (s.code == code) return s.count;
     }
     return 0;
@@ -258,12 +295,21 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
     // but the last row clears the home indicator. The grid area is
     // letterboxed with its own whitespace, so it needs no bottom inset.
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final k = ref.watch(resultBorderRingsProvider(widget.result));
+    final output = widget.result.output;
     return LayoutBuilder(
       builder: (context, constraints) {
         final bodyH = constraints.maxHeight;
         final bodyAspect = constraints.maxWidth / bodyH;
-        final gridAspect =
-            widget.output.pattern.width / widget.output.pattern.height;
+        // Whitespace/letterbox must use the SAME canvas aspect the preview
+        // letterboxes by: it includes the tick margin + the k border rings, so
+        // it is NOT (W+2k)/(H+2k) (design D7 — one geometry source).
+        final gridAspect = BeadGridLayout(
+          width: output.pattern.width,
+          height: output.pattern.height,
+          borderRings: k,
+          cellSize: 1,
+        ).canvasAspect;
         // Grid height fraction under a contain fit (matches BeadGridView's
         // Center+AspectRatio behavior). Whitespace = the rest.
         final gridHF = gridAspect > bodyAspect
@@ -295,10 +341,11 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
                 // grid's natural height, the top whitespace disappears.
                 Expanded(
                   child: BeadGridView(
-                    cells: widget.output.pattern.cells,
-                    width: widget.output.pattern.width,
-                    height: widget.output.pattern.height,
+                    cells: output.pattern.cells,
+                    width: output.pattern.width,
+                    height: output.pattern.height,
                     palette: widget.palette,
+                    borderRings: k,
                     highlightedIndex: _highlightedIndex,
                     onCellTap: _onCellTap,
                   ),
@@ -310,7 +357,7 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
                   child: _LegendSheet(
                     expanded: _legendExpanded,
                     bottomInset: bottomInset,
-                    stats: widget.output.stats,
+                    stats: output.stats,
                     palette: widget.palette,
                     highlightedIndex: _highlightedIndex,
                     onToggle: () =>
@@ -333,12 +380,28 @@ class _ResultBodyState extends ConsumerState<_ResultBody> {
                   curve: Curves.easeOut,
                   child: _SaveTip(
                     onSave: () {
-                      _saveToAlbum(context, ref, widget.output.gridPng);
+                      _saveGridToAlbum(
+                          context, ref, output, widget.palette, k);
                       _dismissSaveTip();
                     },
                     onDismiss: _dismissSaveTip,
                   ),
                 ),
+              ),
+            ),
+            // Border-ring stepper for THIS preview only (design D3/D8). Floats
+            // just above the legend and moves with it. Changing k updates the
+            // shared provider → this body rebuilds and re-renders the preview
+            // (and the save PNG) at the new k; it never calls _generate and is
+            // never written back to the persisted default.
+            Positioned(
+              right: 12,
+              bottom: legendH + 8,
+              child: _BorderRingStepper(
+                value: k,
+                onChanged: (v) => ref
+                    .read(resultBorderRingsProvider(widget.result).notifier)
+                    .set(v),
               ),
             ),
           ],
@@ -400,6 +463,59 @@ class _SaveTip extends StatelessWidget {
               color: theme.colorScheme.onPrimaryContainer,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact "边框圈 k" stepper pinned over the result grid — sets the
+/// **transient** border-ring count for this preview/save only (design D3/D8).
+/// Gated to `0..kMaxBorderRings`; the hint rides along as a tooltip.
+class _BorderRingStepper extends StatelessWidget {
+  const _BorderRingStepper({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Tooltip(
+      message: l10n.borderRingsResultHint,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(24),
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.borderRingsLabel, style: theme.textTheme.labelLarge),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: value > 0 ? () => onChanged(value - 1) : null,
+                icon: const Icon(Icons.remove),
+                iconSize: 18,
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+              SizedBox(
+                width: 16,
+                child: Text('$value',
+                    textAlign: TextAlign.center, style: monoTextStyle),
+              ),
+              IconButton(
+                onPressed:
+                    value < kMaxBorderRings ? () => onChanged(value + 1) : null,
+                icon: const Icon(Icons.add),
+                iconSize: 18,
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -598,32 +714,51 @@ void _copySummary(BuildContext context, WidgetRef ref, String summary) {
 
 bool _albumSaveInFlight = false;
 
-void _saveToAlbum(BuildContext context, WidgetRef ref, Uint8List png) {
+/// Render the grid to PNG at the CURRENT `k` (CPU raster, design D4 — never
+/// `output.gridPng`, which is now a dead engine artifact on the App side), then
+/// save it to the album. Any failure — render or album — falls through to the
+/// same catch/snackbar so a bad save never crashes the page.
+Future<void> _saveGridToAlbum(
+  BuildContext context,
+  WidgetRef ref,
+  GenerateOutput output,
+  List<PaletteColor> palette,
+  int borderRings,
+) async {
   if (_albumSaveInFlight) return;
   _albumSaveInFlight = true;
-  ref
-      .read(saveToAlbumProvider)
-      .call(png)
-      .then((_) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).resultSavedToAlbum)),
-          );
-        }
-      })
-      .catchError((e) {
-        if (context.mounted) {
-          final l10n = AppLocalizations.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                e is AlbumAccessDenied
-                    ? l10n.albumPermissionDenied
-                    : l10n.saveFailed(e.toString()),
-              ),
-            ),
-          );
-        }
-      })
-      .whenComplete(() => _albumSaveInFlight = false);
+  try {
+    // ponytail: synchronous CPU raster on the tap. The canvas is hard-clamped
+    // to 4096px in renderPatternPng, so cost is bounded; move to `compute` only
+    // if a huge pattern visibly janks the frame.
+    final png = renderPatternPng(
+      cells: output.pattern.cells,
+      width: output.pattern.width,
+      height: output.pattern.height,
+      palette: palette,
+      borderRings: borderRings,
+    );
+    await ref.read(saveToAlbumProvider).call(png);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(AppLocalizations.of(context).resultSavedToAlbum)),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is AlbumAccessDenied
+                ? l10n.albumPermissionDenied
+                : l10n.saveFailed(e.toString()),
+          ),
+        ),
+      );
+    }
+  } finally {
+    _albumSaveInFlight = false;
+  }
 }
